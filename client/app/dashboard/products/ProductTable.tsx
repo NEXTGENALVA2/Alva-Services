@@ -233,7 +233,7 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Category</label>
-                      {(isEditing || !selectedProduct) ? (
+                      {isEditing ? (
                         <div className="flex gap-2 items-center">
                           <select
                             className="w-full border border-gray-300 rounded px-3 py-2"
