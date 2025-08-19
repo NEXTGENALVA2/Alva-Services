@@ -44,6 +44,12 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
   const [isEditing, setIsEditing] = useState(false);
   const [editedProduct, setEditedProduct] = useState<Product | null>(null);
 
+  // Safe stub for delete handler used by UI (backup file)
+  const handleDeleteProduct = (id: string) => {
+    // Remove locally to avoid TS error in backup component; actual implementation may call API
+    setProducts(prev => prev.filter(p => p.id !== id));
+  };
+
   useEffect(() => {
     // Uncomment when backend is ready
     // axios.get('/api/products', {

@@ -20,21 +20,82 @@ interface ProductDetail {
 
 interface AddProductFormProps {
   onSubmit: (productData: any) => void;
+  initialImages?: string[];
 }
 
-export default function AddProductForm({ onSubmit }: AddProductFormProps) {
+export default function AddProductForm({ onSubmit, initialImages }: AddProductFormProps) {
+  // Edit mode: old images preview
+  React.useEffect(() => {
+    if (initialImages && initialImages.length > 0) {
+      setImagePreviews(initialImages);
+    }
+  }, [initialImages]);
   // --- State ---
   const [name, setName] = useState('');
   const [shortDesc, setShortDesc] = useState('');
   const [desc, setDesc] = useState('');
   const [category, setCategory] = useState('');
+  const [subcategory, setSubcategory] = useState('');
   const [categories, setCategories] = useState<string[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('categories');
       if (stored) return JSON.parse(stored);
     }
-    return ['Gadgets', 'Camera', 'Electronics', 'Clothing', 'Home & Garden', 'Books'];
+    return ['Electronics', 'Fashion', 'Home & Garden', 'Health & Beauty', 'Sports', 'Books'];
   });
+
+  // Category-subcategory mapping
+  const [categorySubcategories, setCategorySubcategories] = useState<Record<string, string[]>>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('categorySubcategories');
+      if (stored) return JSON.parse(stored);
+    }
+    return {
+      'Electronics': ['Mobile', 'Laptop', 'Headphones', 'Accessories'],
+      'Fashion': ['Men\'s Wear', 'Women\'s Wear', 'Kids Wear', 'Shoes'],
+      'Home & Garden': ['Furniture', 'Kitchen', 'Decoration', 'Tools'],
+      'Health & Beauty': ['Skincare', 'Makeup', 'Health Products', 'Personal Care'],
+      'Sports': ['Fitness', 'Outdoor', 'Sports Wear', 'Equipment'],
+      'Books': ['Fiction', 'Non-Fiction', 'Educational', 'Children\'s Books']
+    };
+  });
+
+  // Save category-subcategory mapping to localStorage
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('categorySubcategories', JSON.stringify(categorySubcategories));
+    }
+  }, [categorySubcategories]);
+
+  // Add new category
+  const addNewCategory = () => {
+    const name = prompt('নতুন ক্যাটাগরির নাম দিন:');
+    if (name && name.trim() && !categories.includes(name.trim())) {
+      const newCategory = name.trim();
+      setCategories([...categories, newCategory]);
+      setCategorySubcategories({
+        ...categorySubcategories,
+        [newCategory]: []
+      });
+    }
+  };
+
+  // Add new subcategory
+  const addNewSubcategory = () => {
+    if (!category) {
+      alert('প্রথমে একটি ক্যাটাগরি সিলেক্ট করুন!');
+      return;
+    }
+    
+    const name = prompt(`"${category}" ক্যাটাগরির জন্য নতুন সাবক্যাটাগরি নাম দিন:`);
+    if (name && name.trim() && !categorySubcategories[category]?.includes(name.trim())) {
+      const newSubcategory = name.trim();
+      setCategorySubcategories({
+        ...categorySubcategories,
+        [category]: [...(categorySubcategories[category] || []), newSubcategory]
+      });
+    }
+  };
 
   React.useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -72,12 +133,32 @@ export default function AddProductForm({ onSubmit }: AddProductFormProps) {
       
       // Create preview URLs
       const previews: string[] = [];
-      files.forEach(file => {
+      let loadedCount = 0;
+      
+      files.forEach((file, index) => {
+        // Check file size (limit to 2MB per image)
+        if (file.size > 2 * 1024 * 1024) {
+          alert(`${file.name} ফাইলটি খুব বড় (২MB এর চেয়ে ছোট হতে হবে)`);
+          return;
+        }
+        
         const reader = new FileReader();
         reader.onload = (event) => {
           if (event.target?.result) {
-            previews.push(event.target.result as string);
-            setImagePreviews([...previews]);
+            previews[index] = event.target.result as string;
+            loadedCount++;
+            
+            // Update state when all files are loaded
+            if (loadedCount === files.length) {
+              setImagePreviews(previews.filter(Boolean));
+            }
+          }
+        };
+        reader.onerror = () => {
+          console.error(`Error reading file: ${file.name}`);
+          loadedCount++;
+          if (loadedCount === files.length) {
+            setImagePreviews(previews.filter(Boolean));
           }
         };
         reader.readAsDataURL(file);
@@ -140,9 +221,25 @@ export default function AddProductForm({ onSubmit }: AddProductFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log('DEBUG: Form submission started');
+    console.log('DEBUG: sellPrice value:', sellPrice);
+    console.log('DEBUG: name value:', name);
+
     // Basic validation
-    if (!name.trim() || !sellPrice.trim()) {
-      alert('প্রোডাক্টের নাম এবং দাম দিতে হবে!');
+    if (!name.trim()) {
+      alert('প্রোডাক্টের নাম দিতে হবে!');
+      return;
+    }
+    
+    if (!sellPrice.trim()) {
+      alert('প্রোডাক্টের দাম দিতে হবে!');
+      return;
+    }
+    
+    // Check if price is a valid number
+    const priceValue = parseFloat(sellPrice);
+    if (isNaN(priceValue) || priceValue <= 0) {
+      alert('সঠিক দাম দিতে হবে (শূন্যের চেয়ে বেশি)!');
       return;
     }
 
@@ -174,27 +271,36 @@ export default function AddProductForm({ onSubmit }: AddProductFormProps) {
       detail.type.trim() !== '' && detail.description.trim() !== ''
     );
 
+    // Debug logging
+    console.log('DEBUG: desc value:', desc);
+    console.log('DEBUG: shortDesc value:', shortDesc);
+    
     const productData = {
       name: name.trim(),
       shortDesc,
       desc,
+      description: desc || shortDesc || 'Default description',
       category,
+      subcategory,
       brand,
       condition,
       status,
       images: imagePreviews, // Use image previews as base64 data URLs
       video,
-      sellPrice,
-      oldPrice,
-      buyPrice,
+      price: priceValue, // Use parsed number instead of string
+      oldPrice: oldPrice ? parseFloat(oldPrice) : null,
+      buyPrice: buyPrice ? parseFloat(buyPrice) : null,
       sku,
       unit,
-      stock,
+      stock: stock ? parseInt(stock) : null,
       warranty,
       variants: filteredVariants,
       details: filteredDetails,
       deliveryApplied
     };
+
+    console.log('DEBUG: Sending product data:', productData);
+    console.log('DEBUG: Price value:', productData.price, 'Type:', typeof productData.price);
 
     // Call the onSubmit function passed from parent
     onSubmit(productData);
@@ -224,7 +330,10 @@ export default function AddProductForm({ onSubmit }: AddProductFormProps) {
             <select
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={category}
-              onChange={e => setCategory(e.target.value)}
+              onChange={e => {
+                setCategory(e.target.value);
+                setSubcategory(''); // Reset subcategory when category changes
+              }}
             >
               <option value="">Select category</option>
               {categories.map(cat => (
@@ -233,13 +342,38 @@ export default function AddProductForm({ onSubmit }: AddProductFormProps) {
             </select>
             <button
               type="button"
-              className="bg-purple-600 text-white px-2 py-1 rounded text-xs hover:bg-purple-700"
+              className="bg-purple-600 text-white px-3 py-2 rounded text-xs hover:bg-purple-700 whitespace-nowrap"
               title="Add new category"
-              onClick={() => {
-                const name = prompt('নতুন ক্যাটাগরির নাম দিন:');
-                if (name && !categories.includes(name)) setCategories([...categories, name]);
-              }}
-            >+ Add</button>
+              onClick={addNewCategory}
+            >
+              + Add
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Subcategory</label>
+          <div className="flex gap-2 items-center">
+            <select
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={subcategory}
+              onChange={e => setSubcategory(e.target.value)}
+              disabled={!category}
+            >
+              <option value="">Select subcategory</option>
+              {category && categorySubcategories[category]?.map(subcat => (
+                <option key={subcat} value={subcat}>{subcat}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="bg-green-600 text-white px-3 py-2 rounded text-xs hover:bg-green-700 whitespace-nowrap"
+              title="Add new subcategory"
+              onClick={addNewSubcategory}
+              disabled={!category}
+            >
+              + Add
+            </button>
           </div>
         </div>
         
@@ -380,8 +514,7 @@ export default function AddProductForm({ onSubmit }: AddProductFormProps) {
       {/* Media */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Product Images</label>
-          
+          <label className="block text-sm font-medium text-gray-700 mb-1">প্রোডাক্টের ছবি (সর্বোচ্চ ১০টি)</label>
           {/* Image Previews */}
           {imagePreviews.length > 0 && (
             <div className="grid grid-cols-3 gap-4 mb-4">
@@ -395,7 +528,8 @@ export default function AddProductForm({ onSubmit }: AddProductFormProps) {
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
-                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 opacity-100 transition-opacity"
+                    title="ছবি মুছুন"
                   >
                     ×
                   </button>
@@ -403,15 +537,16 @@ export default function AddProductForm({ onSubmit }: AddProductFormProps) {
               ))}
             </div>
           )}
-          
           <input 
+            id="product-image-input"
             type="file" 
             multiple 
             accept="image/*" 
             onChange={handleImageChange}
             className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={imagePreviews.length >= 10}
           />
-          <p className="text-xs text-gray-500 mt-1">Upload multiple images (JPG, PNG, GIF)</p>
+          <p className="text-xs text-gray-500 mt-1">একসাথে সর্বোচ্চ ১০টি ছবি আপলোড করুন (JPG, PNG, GIF)। ছবি মুছে ফেলতে × চিহ্নে ক্লিক করুন।</p>
         </div>
         
         <div>

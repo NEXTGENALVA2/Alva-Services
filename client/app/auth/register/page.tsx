@@ -34,7 +34,7 @@ export default function Register() {
     setError('')
 
     try {
-      const response = await axios.post('/api/auth/register', formData)
+      const response = await axios.post('http://localhost:5000/api/auth/register', formData)
       localStorage.setItem('token', response.data.token)
       router.push('/dashboard')
     } catch (error: any) {
