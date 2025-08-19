@@ -12,26 +12,29 @@ export default function ProductsPage() {
   const [mounted, setMounted] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
-  const [products, setProducts] = useState<Product[]>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('products');
-      if (stored) {
-        try {
-          return JSON.parse(stored);
-        } catch {
-          return defaultProducts;
-        }
-      }
-    }
-    return defaultProducts;
-  });
-  useEffect(() => { setMounted(true); }, []);
-  // Save products to localStorage whenever it changes
+
+  const [products, setProducts] = useState<Product[]>([]);
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('products', JSON.stringify(products));
-    }
-  }, [products]);
+    setMounted(true);
+    // ডাটাবেস থেকে প্রোডাক্ট লোড করুন
+    const fetchProducts = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:5000/api/products', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          console.log('DEBUG: Fetched products:', data);
+          console.log('DEBUG: First product structure:', data[0]);
+          setProducts(data);
+        }
+      } catch (err) {
+        setProducts([]);
+      }
+    };
+    fetchProducts();
+  }, []);
   if (!mounted) return null;
 
   const filters = [
@@ -42,28 +45,97 @@ export default function ProductsPage() {
   ];
 
   // Function to add new product
-  const handleAddProduct = (productData: any) => {
-    const newProduct: Product = {
-      id: (products.length + 1).toString(),
-      name: productData.name,
-      sku: productData.sku || `${Date.now()}`,
-      price: parseInt(productData.sellPrice) || 0,
-      oldPrice: productData.oldPrice ? parseFloat(productData.oldPrice) : undefined,
-      buyPrice: productData.buyPrice ? parseFloat(productData.buyPrice) : undefined,
-      stock: parseInt(productData.stock) || 0,
-      sold: 0,
-      category: productData.category || 'Uncategorized',
-      images: productData.images || [],
-      shortDesc: productData.shortDesc || '',
-      desc: productData.desc || '',
-      variants: productData.variants || [],
-      details: productData.details || [],
-      video: productData.video || ''
-    };
-    setProducts(prev => [...prev, newProduct]);
-    setShowAdd(false); // Go back to products list
-    // Show success message
-    alert('প্রোডাক্ট সফলভাবে যোগ করা হয়েছে!');
+  const handleAddProduct = async (productData: any) => {
+    try {
+      // Send to backend API
+      const token = localStorage.getItem('token');
+      console.log('Token from localStorage:', token ? token.substring(0, 20) + '...' : 'NO TOKEN');
+      
+      if (!token) {
+        alert('লগিন টোকেন নেই! আবার লগিন করুন।');
+        return;
+      }
+      
+      // Convert base64 images to simple URLs (for demo purposes)
+      // In production, you'd upload to cloud storage and get real URLs
+      const imageUrls = productData.images && productData.images.length > 0 
+        ? productData.images.map((img: string, index: number) => {
+            // If it's already a base64 data URL, keep it as is for now
+            // In production, upload to cloud storage first
+            return img;
+          })
+        : [];
+
+      console.log('DEBUG: productData received:', productData);
+      console.log('DEBUG: productData.description:', productData.description);
+      console.log('DEBUG: productData.desc:', productData.desc);
+      console.log('DEBUG: productData.shortDesc:', productData.shortDesc);
+
+      console.log('Sending product data:', {
+        name: productData.name,
+        description: productData.description,
+        price: productData.price || 0,  // Use productData.price (already parsed number)
+        stock: parseInt(productData.stock) || 0,
+        images: imageUrls,
+        variations: productData.variants || {}
+      });
+
+      console.log('Making API call with token:', token ? 'Token present' : 'NO TOKEN');
+
+  const response = await fetch('http://localhost:5000/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: productData.name,
+          description: productData.description,
+          desc: productData.desc, // Full Description field
+          shortDesc: productData.shortDesc,
+          brand: productData.brand,
+          sku: productData.sku,
+          category: productData.category,
+          condition: productData.condition,
+          status: productData.status,
+          price: productData.price || 0,
+          oldPrice: productData.oldPrice,
+          buyPrice: productData.buyPrice,
+          stock: parseInt(productData.stock) || 0,
+          unit: productData.unit,
+          warranty: productData.warranty,
+          video: productData.video,
+          images: imageUrls,
+          variants: productData.variants || {},
+          details: productData.details || [],
+          deliveryApplied: productData.deliveryApplied
+        })
+      });
+
+      if (response.ok) {
+        // নতুন প্রোডাক্ট ডাটাবেস থেকে আবার লোড করুন
+        const res = await fetch('http://localhost:5000/api/products', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setProducts(data);
+        }
+        setShowAdd(false);
+        alert('প্রোডাক্ট সফলভাবে যোগ করা হয়েছে এবং আপনার ওয়েবসাইটে দেখা যাবে!');
+      } else {
+        const errorData = await response.json();
+        console.error('Backend error:', errorData);
+        let details = '';
+        if (errorData.error) details += `\nError: ${errorData.error}`;
+        if (errorData.details) details += `\nDetails: ${errorData.details}`;
+        if (errorData.errors) details += `\nValidation: ${errorData.errors.join(', ')}`;
+        alert(`সার্ভার এরর: ${errorData.message || 'প্রোডাক্ট সেভ করতে পারেনি'}${details}`);
+      }
+    } catch (error) {
+      console.error('Error saving product:', error);
+      alert('প্রোডাক্ট সেভ করতে সমস্যা হয়েছে। ইন্টারনেট কানেকশন চেক করুন এবং আবার চেষ্টা করুন।');
+    }
   };
 
   return (

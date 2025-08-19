@@ -1,5 +1,5 @@
 const express = require('express');
-const { Website, User } = require('../models');
+const { Website, User, Banner } = require('../models');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
@@ -8,12 +8,28 @@ router.get('/public/:domain', async (req, res) => {
   try {
     const website = await Website.findOne({
       where: { domain: req.params.domain },
-      include: [{ model: require('../models').Product, as: 'products' }]
+      include: [
+        { model: require('../models').Product, as: 'products' },
+        { model: Banner, where: { isActive: true }, required: false, order: [['order', 'ASC']] }
+      ]
     });
     if (!website) {
       return res.status(404).json({ message: 'Website not found' });
     }
-    res.json({ website, products: website.products });
+    
+    console.log('DEBUG: Domain requested:', req.params.domain);
+    console.log('DEBUG: Website found:', website.id, website.name);
+    console.log('DEBUG: Products found:', website.products ? website.products.length : 0);
+    console.log('DEBUG: Banners found:', website.Banners ? website.Banners.length : 0);
+    if (website.products && website.products.length > 0) {
+      console.log('DEBUG: First product:', JSON.stringify(website.products[0], null, 2));
+    }
+    
+    res.json({ 
+      website, 
+      products: website.products || [],
+      banners: website.Banners || []
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error fetching website', error: error.message });
   }
@@ -68,16 +84,17 @@ router.post('/create', authMiddleware, async (req, res) => {
 router.get('/', authMiddleware, async (req, res) => {
   try {
     const website = await Website.findOne({ 
-      where: { userId: req.user.id },
-      include: ['Products', 'Orders']
+      where: { userId: req.user.id }
     });
 
     if (!website) {
       return res.status(404).json({ message: 'Website not found' });
     }
 
+    console.log('DEBUG: Website found for user:', req.user.id, 'Website:', website.name, website.domain);
     res.json(website);
   } catch (error) {
+    console.log('DEBUG: Error fetching website:', error.message);
     res.status(500).json({ message: 'Error fetching website', error: error.message });
   }
 });

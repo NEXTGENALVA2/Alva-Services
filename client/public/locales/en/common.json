@@ -1,0 +1,16 @@
+{
+	"dashboard": "Dashboard",
+	"totalProducts": "Total Products",
+	"totalOrders": "Total Orders",
+	"totalRevenue": "Total Revenue",
+	"monthlyProfit": "Monthly Profit",
+	"thisMonth": "This month",
+	"yourWebsite": "Your Website",
+	"name": "Name",
+	"domain": "Domain",
+	"viewWebsite": "View Website",
+	"currency": "$",
+	"welcomeTitle": "Welcome! Start your e-commerce journey",
+	"welcomeDesc": "Create your website and add your first product",
+	"createWebsite": "Create Website"
+}

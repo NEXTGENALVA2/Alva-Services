@@ -19,14 +19,18 @@ interface ProductDetail {
 export interface Product {
   id: string;
   name: string;
+  brand?: string;
   sku?: string;
   price: number;
   oldPrice?: number;
   buyPrice?: number;
   stock: number;
+  condition?: string;
+  status?: string;
   sold?: number;
   images?: string[];
   category?: string;
+  subcategory?: string;
   shortDesc?: string;
   desc?: string;
   variants?: ProductVariant[];
@@ -61,6 +65,22 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
       if (stored) return JSON.parse(stored);
     }
     return ['Gadgets', 'Camera', 'Electronics', 'Clothing', 'Home & Garden', 'Books'];
+  });
+
+  // Category-Subcategory mapping state (persisted in localStorage)
+  const [categorySubcategories, setCategorySubcategories] = useState<{[key: string]: string[]}>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('categorySubcategories');
+      if (stored) return JSON.parse(stored);
+    }
+    return {
+      'Gadgets': ['Smartphones', 'Tablets', 'Smartwatches'],
+      'Camera': ['DSLR', 'Mirrorless', 'Action Cameras'],
+      'Electronics': ['Laptops', 'Headphones', 'Accessories'],
+      'Clothing': ['Men', 'Women', 'Kids'],
+      'Home & Garden': ['Kitchen', 'Decor', 'Tools'],
+      'Books': ['Fiction', 'Non-Fiction', 'Educational']
+    };
   });
 
   // Image upload handler
@@ -102,32 +122,88 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
     }
   };
 
-  useEffect(() => {
-    // Uncomment when backend is ready
-    // axios.get('/api/products', {
-    //   headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-    // }).then(response => {
-    //   setProducts(response.data);
-    // }).catch(error => {
-    //   console.error('Error fetching products:', error);
-    // });
-  }, []);
+  // ডাটাবেস থেকে প্রোডাক্ট লোড এখন parent (page.tsx) থেকে হচ্ছে
 
   const handleDeleteProduct = async (productId: string) => {
     try {
-      // Uncomment when backend is ready
-      // await axios.delete(`/api/products/${productId}`, {
-      //   headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      // });
-      
-      setProducts(prev => prev.filter(p => p.id !== productId));
-      setSelectedProduct(null);
-      setEditedProduct(null);
-      setIsEditing(false);
-      alert('প্রোডাক্ট সফলভাবে ডিলিট হয়েছে!');
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5000/api/products/${productId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        setProducts(prev => prev.filter(p => p.id !== productId));
+        setSelectedProduct(null);
+        setEditedProduct(null);
+        setIsEditing(false);
+        alert('প্রোডাক্ট সফলভাবে ডিলিট হয়েছে!');
+      } else {
+        alert('প্রোডাক্ট ডিলিট করতে সমস্যা হয়েছে!');
+      }
     } catch (error) {
       console.error('Error deleting product:', error);
       alert('প্রোডাক্ট ডিলিট করতে সমস্যা হয়েছে!');
+    }
+  };
+
+  const handleUpdateProduct = async () => {
+    if (!editedProduct) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Prepare the product data for backend
+      const productData = {
+        name: editedProduct.name,
+        description: editedProduct.desc, // Map desc to description for backend
+        shortDesc: editedProduct.shortDesc,
+        brand: editedProduct.brand,
+        sku: editedProduct.sku,
+        category: editedProduct.category,
+        subcategory: editedProduct.subcategory,
+        price: editedProduct.price,
+        oldPrice: editedProduct.oldPrice,
+        buyPrice: editedProduct.buyPrice,
+        stock: editedProduct.stock,
+        condition: editedProduct.condition,
+        status: editedProduct.status,
+        video: editedProduct.video,
+        images: editedProduct.images || [], // Ensure images array is sent
+        variations: editedProduct.variants || {}, // Map variants to variations for backend
+        isActive: true
+      };
+
+      console.log('Updating product with data:', productData);
+
+      const response = await fetch(`http://localhost:5000/api/products/${editedProduct.id}`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(productData)
+      });
+
+      if (response.ok) {
+        const updatedProductFromServer = await response.json();
+        
+        // Update the local products state
+        setProducts(prev => prev.map(p => 
+          p.id === editedProduct.id ? { ...editedProduct, ...updatedProductFromServer } : p
+        ));
+        
+        // Update selected product
+        setSelectedProduct({ ...editedProduct, ...updatedProductFromServer });
+        setIsEditing(false);
+        alert('প্রোডাক্ট সফলভাবে আপডেট হয়েছে!');
+      } else {
+        const errorData = await response.json();
+        console.error('Update failed:', errorData);
+        alert('প্রোডাক্ট আপডেট করতে সমস্যা হয়েছে!');
+      }
+    } catch (error) {
+      console.error('Error updating product:', error);
+      alert('প্রোডাক্ট আপডেট করতে সমস্যা হয়েছে!');
     }
   };
 
@@ -216,7 +292,7 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
                   </h1>
 
                   {/* Product Name and Category Row */}
-                  <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div className="grid grid-cols-3 gap-6 mb-6">
                     <div>
                       <label className="block text-sm font-medium mb-1">Product Name *</label>
                       {isEditing ? (
@@ -238,7 +314,19 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
                           <select
                             className="w-full border border-gray-300 rounded px-3 py-2"
                             value={editedProduct?.category || ''}
-                            onChange={e => setEditedProduct({ ...editedProduct!, category: e.target.value })}
+                            onChange={e => {
+                              const newCategory = e.target.value;
+                              const currentSubcategory = editedProduct?.subcategory;
+                              
+                              // Check if current subcategory is valid for new category
+                              const isValidSubcategory = newCategory && categorySubcategories[newCategory]?.includes(currentSubcategory || '');
+                              
+                              setEditedProduct({ 
+                                ...editedProduct!, 
+                                category: newCategory,
+                                subcategory: isValidSubcategory ? currentSubcategory : '' // Reset only if invalid
+                              });
+                            }}
                           >
                             <option value="">Select category</option>
                             {categories.map(cat => (
@@ -251,12 +339,55 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
                             title="Add new category"
                             onClick={() => {
                               const name = prompt('নতুন ক্যাটাগরির নাম দিন:');
-                              if (name && !categories.includes(name)) setCategories([...categories, name]);
+                              if (name && !categories.includes(name)) {
+                                const updatedCategories = [...categories, name];
+                                setCategories(updatedCategories);
+                                localStorage.setItem('categories', JSON.stringify(updatedCategories));
+                              }
                             }}
                           >+ Add</button>
                         </div>
                       ) : (
                         <p className="py-2 text-gray-700">{selectedProduct?.category || '-'}</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Subcategory</label>
+                      {isEditing ? (
+                        <div className="flex gap-2 items-center">
+                          <select
+                            className="w-full border border-gray-300 rounded px-3 py-2"
+                            value={editedProduct?.subcategory || ''}
+                            onChange={e => setEditedProduct({ ...editedProduct!, subcategory: e.target.value })}
+                          >
+                            <option value="">Select subcategory</option>
+                            {((editedProduct?.category && categorySubcategories[editedProduct.category]) || []).map(subcat => (
+                              <option key={subcat} value={subcat}>{subcat}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="bg-green-600 text-white px-2 py-1 rounded text-xs hover:bg-green-700"
+                            title="Add new subcategory"
+                            onClick={() => {
+                              if (!editedProduct?.category) {
+                                alert('প্রথমে একটি ক্যাটাগরি নির্বাচন করুন');
+                                return;
+                              }
+                              const name = prompt('নতুন সাবক্যাটাগরির নাম দিন:');
+                              if (name && !categorySubcategories[editedProduct.category]?.includes(name)) {
+                                const updated = {
+                                  ...categorySubcategories,
+                                  [editedProduct.category]: [...(categorySubcategories[editedProduct.category] || []), name]
+                                };
+                                setCategorySubcategories(updated);
+                                localStorage.setItem('categorySubcategories', JSON.stringify(updated));
+                              }
+                            }}
+                          >+ Add</button>
+                        </div>
+                      ) : (
+                        <p className="py-2 text-gray-700">{selectedProduct?.subcategory || '-'}</p>
                       )}
                     </div>
                   </div>
@@ -270,9 +401,11 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
                           type="text"
                           className="w-full border border-gray-300 rounded px-3 py-2"
                           placeholder="Enter brand"
+                          value={editedProduct?.brand || ''}
+                          onChange={(e) => setEditedProduct({...editedProduct!, brand: e.target.value})}
                         />
                       ) : (
-                        <p className="py-2 text-gray-700">-</p>
+                        <p className="py-2 text-gray-700">{selectedProduct?.brand || '-'}</p>
                       )}
                     </div>
                     <div>
@@ -718,7 +851,11 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
                           className="bg-purple-600 text-white px-2 py-1 rounded text-xs hover:bg-purple-700"
                           onClick={() => {
                             const name = prompt('নতুন ক্যাটাগরির নাম দিন:');
-                            if (name && !categories.includes(name)) setCategories([...categories, name]);
+                            if (name && !categories.includes(name)) {
+                              const updatedCategories = [...categories, name];
+                              setCategories(updatedCategories);
+                              localStorage.setItem('categories', JSON.stringify(updatedCategories));
+                            }
                           }}
                         >+ Add</button>
                       )}
@@ -752,14 +889,7 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
                     {isEditing ? (
                       <>
                         <button
-                          onClick={() => {
-                            setProducts(prev => prev.map(p => 
-                              p.id === editedProduct!.id ? editedProduct! : p
-                            ));
-                            setSelectedProduct(editedProduct);
-                            setIsEditing(false);
-                            alert('প্রোডাক্ট সফলভাবে আপডেট হয়েছে!');
-                          }}
+                          onClick={handleUpdateProduct}
                           className="w-full bg-purple-600 text-white py-3 rounded-lg font-medium hover:bg-purple-700 transition-colors"
                         >
                           Update Product
@@ -774,7 +904,10 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
                     ) : (
                       <>
                         <button
-                          onClick={() => setIsEditing(true)}
+                          onClick={() => {
+                            setEditedProduct(deepCloneProduct(selectedProduct));
+                            setIsEditing(true);
+                          }}
                           className="w-full bg-blue-600 text-white py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
                         >
                           Edit Product

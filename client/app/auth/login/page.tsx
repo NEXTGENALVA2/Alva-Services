@@ -32,7 +32,7 @@ export default function Login() {
 
     try {
       // Check if server is running first
-      const response = await axios.post('/api/auth/login', formData, {
+      const response = await axios.post('http://localhost:5000/api/auth/login', formData, {
         timeout: 10000,
         headers: {
           'Content-Type': 'application/json'
@@ -40,7 +40,9 @@ export default function Login() {
       })
       
       if (response.data.token) {
+        console.log('Login successful, saving token:', response.data.token.substring(0, 20) + '...');
         localStorage.setItem('token', response.data.token)
+        console.log('Token saved to localStorage');
         router.push('/dashboard')
       }
     } catch (error: any) {

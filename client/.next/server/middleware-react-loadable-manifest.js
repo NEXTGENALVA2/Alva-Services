@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST="{\"..\\\\components\\\\Topbar.tsx -> ../app/components/LanguageCurrencySwitcher\":{\"id\":\"..\\\\components\\\\Topbar.tsx -> ../app/components/LanguageCurrencySwitcher\",\"files\":[\"static/chunks/_app-pages-browser_app_components_LanguageCurrencySwitcher_tsx.js\"]}}"

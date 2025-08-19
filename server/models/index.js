@@ -23,6 +23,7 @@ const Website = sequelize.define('Website', {
   logo: DataTypes.STRING,
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
   settings: { type: DataTypes.JSONB, defaultValue: {} },
+  userId: { type: DataTypes.UUID, allowNull: false, references: { model: 'Users', key: 'id' } },
 });
 
 // Product model
@@ -30,11 +31,44 @@ const Product = sequelize.define('Product', {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
   name: { type: DataTypes.STRING, allowNull: false },
   description: DataTypes.TEXT,
+  desc: DataTypes.TEXT, // Full Description field
+  shortDesc: DataTypes.TEXT,
+  brand: DataTypes.STRING,
+  sku: DataTypes.STRING,
+  category: DataTypes.STRING,
+  subcategory: DataTypes.STRING, // Added subcategory field
   price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+  oldPrice: DataTypes.DECIMAL(10, 2),
+  buyPrice: DataTypes.DECIMAL(10, 2),
   stock: { type: DataTypes.INTEGER, defaultValue: 0 },
-  images: { type: DataTypes.ARRAY(DataTypes.STRING), defaultValue: [] },
+  condition: { type: DataTypes.STRING, defaultValue: 'New' },
+  status: { type: DataTypes.STRING, defaultValue: 'ACTIVE' },
+  video: DataTypes.STRING,
+  images: { type: DataTypes.ARRAY(DataTypes.TEXT), defaultValue: [] },
   variations: { type: DataTypes.JSONB, defaultValue: {} },
+  details: { type: DataTypes.JSONB, defaultValue: [] },
+  unit: DataTypes.STRING,
+  warranty: DataTypes.STRING,
+  deliveryApplied: { type: DataTypes.BOOLEAN, defaultValue: true },
+  websiteId: { type: DataTypes.UUID, allowNull: false, references: { model: 'Websites', key: 'id' } },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+});
+
+// Banner model
+const Banner = sequelize.define('Banner', {
+  id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+  title: DataTypes.STRING,
+  subtitle: DataTypes.STRING,
+  image: DataTypes.TEXT,
+  imageUrl: DataTypes.STRING,
+  link: DataTypes.STRING,
+  isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+  order: { type: DataTypes.INTEGER, defaultValue: 0 },
+  websiteId: {
+    type: DataTypes.UUID,
+    allowNull: false,
+    references: { model: 'Websites', key: 'id' }
+  }
 });
 
 // Associations
@@ -58,8 +92,10 @@ const Order = sequelize.define('Order', {
 // Order Items model
 const OrderItem = sequelize.define('OrderItem', {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+  productName: { type: DataTypes.STRING, allowNull: false },
   quantity: { type: DataTypes.INTEGER, allowNull: false },
   price: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+  totalPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
   variation: DataTypes.JSONB,
 });
 
@@ -81,6 +117,9 @@ Website.belongsTo(User, { foreignKey: 'userId' });
 Website.hasMany(Product, { foreignKey: 'websiteId' });
 Product.belongsTo(Website, { foreignKey: 'websiteId' });
 
+Website.hasMany(Banner, { foreignKey: 'websiteId' });
+Banner.belongsTo(Website, { foreignKey: 'websiteId' });
+
 Website.hasMany(Order, { foreignKey: 'websiteId' });
 Order.belongsTo(Website, { foreignKey: 'websiteId' });
 
@@ -97,6 +136,7 @@ module.exports = {
   User,
   Website,
   Product,
+  Banner,
   Order,
   OrderItem,
   Subscription,

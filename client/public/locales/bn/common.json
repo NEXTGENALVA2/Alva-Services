@@ -1,0 +1,16 @@
+{
+	"dashboard": "ড্যাশবোর্ড",
+	"totalProducts": "মোট পণ্য",
+	"totalOrders": "মোট অর্ডার",
+	"totalRevenue": "মোট আয়",
+	"monthlyProfit": "মাসিক লাভ",
+	"thisMonth": "এই মাস",
+	"yourWebsite": "আপনার ওয়েবসাইট",
+	"name": "নাম",
+	"domain": "ডোমেইন",
+	"viewWebsite": "ওয়েবসাইট দেখুন",
+	"currency": "৳",
+	"welcomeTitle": "স্বাগতম! আপনার ই-কমার্স যাত্রা শুরু করুন",
+	"welcomeDesc": "আপনার ওয়েবসাইট তৈরি করুন এবং প্রথম প্রোডাক্ট যোগ করুন",
+	"createWebsite": "ওয়েবসাইট তৈরি করুন"
+}

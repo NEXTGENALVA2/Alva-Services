@@ -1,24 +1,28 @@
-import React, { Dispatch, SetStateAction } from 'react';
+import React, { Dispatch, SetStateAction, useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const LanguageCurrencySwitcher = dynamic(() => import('../app/components/LanguageCurrencySwitcher'), { ssr: false });
 
 interface TopbarProps {
   setSidebarOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 export default function Topbar({ setSidebarOpen }: TopbarProps) {
-  // Try to get website domain from localStorage (set by dashboard page)
-  const handleWebsiteClick = () => {
-    let websiteDomain = null;
+  const [websiteUrl, setWebsiteUrl] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    // Get website info from localStorage (set by dashboard page)
     try {
       const website = JSON.parse(localStorage.getItem('website') || 'null');
-      websiteDomain = website?.domain;
+      const websiteDomain = website?.domain;
+      if (websiteDomain) {
+  setWebsiteUrl(`http://localhost:3000/${websiteDomain}`);
+      }
     } catch {}
-    if (websiteDomain) {
-      window.open(`http://localhost:3000/${websiteDomain}`, '_blank', 'noopener,noreferrer');
-    } else {
-      alert('No website found! Please create your website first.');
-    }
-  };
+  }, []);
 
   return (
     <header className="w-full h-16 bg-white border-b flex items-center px-6 justify-between">
@@ -35,12 +39,25 @@ export default function Topbar({ setSidebarOpen }: TopbarProps) {
       </div>
       
       <div className="flex items-center gap-4">
-        <button
-          className="bg-purple-600 text-white px-4 py-1 rounded hover:bg-purple-700"
-          onClick={handleWebsiteClick}
-        >
-          Website
-        </button>
+        <LanguageCurrencySwitcher />
+        {mounted && websiteUrl && (
+          <a
+            href={websiteUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:text-blue-800 font-medium"
+            title="Visit your site"
+          >
+            {websiteUrl}
+          </a>
+        )}
+        <button className="bg-purple-600 text-white px-4 py-1 rounded hover:bg-purple-700" onClick={() => {
+          if (websiteUrl) {
+            window.open(websiteUrl, '_blank', 'noopener,noreferrer');
+          } else {
+            alert('No website found! Please create your website first.');
+          }
+        }}>Website</button>
         <button className="bg-purple-100 text-purple-700 px-4 py-1 rounded hover:bg-purple-200">Copy</button>
         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center font-bold text-gray-600">P</div>
       </div>
