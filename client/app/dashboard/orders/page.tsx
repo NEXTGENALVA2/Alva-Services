@@ -105,6 +105,8 @@ interface Order {
     price: number;
     quantity: number;
     image?: string;
+    productName?: string;
+    productImage?: string;
   }>;
 }
 
@@ -213,7 +215,7 @@ export default function OrdersPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600">{t('loading')}</div>
+        <div className="text-lg text-gray-600">Loading...</div>
       </div>
     );
   }
@@ -327,74 +329,84 @@ export default function OrdersPage() {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen px-4">
             <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowOrderDetails(false)} />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full">
-              <div className="p-6">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">{t('orderDetails')}</h2>
-                  <button
-                    onClick={() => setShowOrderDetails(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    ✕
-                  </button>
+            <div className="relative bg-white rounded-lg shadow-xl max-w-5xl w-full mx-auto mt-12 p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold">Order Details</h2>
+                <div className="flex gap-2">
+                  <button className="bg-purple-600 text-white px-4 py-2 rounded">Download</button>
+                  <button className="bg-blue-600 text-white px-4 py-2 rounded">Print</button>
+                  <button className="bg-green-600 text-white px-4 py-2 rounded">Save</button>
                 </div>
-
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div>
-                    <h3 className="font-medium mb-2">{t('customerInfo')}</h3>
-                    <p><strong>{t('name')}:</strong> {selectedOrder.customerName}</p>
-                    <p><strong>{t('phone')}:</strong> {selectedOrder.customerPhone}</p>
-                    <p><strong>{t('address')}:</strong> {selectedOrder.customerAddress}</p>
-                    {selectedOrder.customerEmail && (
-                      <p><strong>{t('email')}:</strong> {selectedOrder.customerEmail}</p>
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-medium mb-2">{t('orderInfo')}</h3>
-                    <p><strong>{t('order')} ID:</strong> {selectedOrder.id}</p>
-                    <p><strong>{t('date')}:</strong> {new Date(selectedOrder.createdAt).toLocaleDateString('bn-BD')}</p>
-                    <p><strong>{t('status')}:</strong> {getStatusText(selectedOrder.status)}</p>
-                    <p><strong>{t('paymentMethod')}:</strong> {selectedOrder.paymentMethod}</p>
-                  </div>
-                </div>
-
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
                 <div>
-                  <h3 className="font-medium mb-3">{t('orderItems')}</h3>
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">{t('product')}</th>
-                          <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">{t('price')}</th>
-                          <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">{t('quantity')}</th>
-                          <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">{t('total')}</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {selectedOrder.items.map((item, index) => (
+                  <h3 className="font-semibold mb-2">Customer Information</h3>
+                  <div className="space-y-2">
+                    <input type="text" className="border rounded px-3 py-2 w-full" defaultValue={selectedOrder.customerName} />
+                    <input type="text" className="border rounded px-3 py-2 w-full" defaultValue={selectedOrder.customerPhone} />
+                    <input type="text" className="border rounded px-3 py-2 w-full" defaultValue={selectedOrder.customerAddress} />
+                    <input type="email" className="border rounded px-3 py-2 w-full" defaultValue={selectedOrder.customerEmail || ""} />
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-2">Order Information</h3>
+                  <div className="space-y-2">
+                    <div><strong>Order ID:</strong> {selectedOrder.id}</div>
+                    <div><strong>Date:</strong> {new Date(selectedOrder.createdAt).toLocaleString('bn-BD')}</div>
+                    <select className="border rounded px-3 py-2 w-full" defaultValue={selectedOrder.status}>
+                      <option value="pending">Pending</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                    <select className="border rounded px-3 py-2 w-full" defaultValue={selectedOrder.paymentMethod}>
+                      <option value="cash_on_delivery">Cash On Delivery</option>
+                      <option value="paid">Paid</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div className="mb-6">
+                <h3 className="font-semibold mb-2">Products</h3>
+                <div className="border rounded-lg overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">Image</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">Product</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">Price</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">Quantity</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {(selectedOrder.items && Array.isArray(selectedOrder.items) && selectedOrder.items.length > 0) ? (
+                        selectedOrder.items.map((item, index) => (
                           <tr key={index}>
                             <td className="px-4 py-2">
-                              <div className="flex items-center">
-                                {item.image && (
-                                  <img src={item.image} alt={item.name} className="h-10 w-10 rounded mr-3" />
-                                )}
-                                {item.name}
-                              </div>
+                              {(item.productImage || item.image) && (
+                                <img src={item.productImage || item.image} alt={item.productName || item.name} className="h-16 w-16 rounded" />
+                              )}
                             </td>
+                            <td className="px-4 py-2">{item.productName || item.name}</td>
                             <td className="px-4 py-2">৳{item.price}</td>
                             <td className="px-4 py-2">{item.quantity}</td>
                             <td className="px-4 py-2">৳{item.price * item.quantity}</td>
                           </tr>
-                        ))}
-                      </tbody>
-                      <tfoot className="bg-gray-50">
+                        ))
+                      ) : (
                         <tr>
-                          <td colSpan={3} className="px-4 py-2 text-right font-medium">{t('total')}:</td>
-                          <td className="px-4 py-2 font-bold">৳{selectedOrder.totalAmount}</td>
+                          <td colSpan={5} className="px-4 py-6 text-center text-gray-400">No items found in order.</td>
                         </tr>
-                      </tfoot>
-                    </table>
-                  </div>
+                      )}
+                    </tbody>
+                    <tfoot className="bg-gray-50">
+                      <tr>
+                        <td colSpan={4} className="px-4 py-2 text-right font-medium">Total:</td>
+                        <td className="px-4 py-2 font-bold">৳{selectedOrder.totalAmount}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
                 </div>
               </div>
             </div>

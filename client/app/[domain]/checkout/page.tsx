@@ -1,5 +1,18 @@
+
 "use client";
 import { useEffect, useState } from "react";
+
+// Bangladesh division & district data
+const bdDivisions: { [division: string]: string[] } = {
+  "Dhaka": ["Dhaka", "Faridpur", "Gazipur", "Gopalganj", "Kishoreganj", "Madaripur", "Manikganj", "Munshiganj", "Narayanganj", "Narsingdi", "Rajbari", "Shariatpur", "Tangail"],
+  "Chattogram": ["Bandarban", "Brahmanbaria", "Chandpur", "Chattogram", "Comilla", "Cox's Bazar", "Feni", "Khagrachari", "Lakshmipur", "Noakhali", "Rangamati"],
+  "Barisal": ["Barisal", "Barguna", "Bhola", "Jhalokathi", "Patuakhali", "Pirojpur"],
+  "Khulna": ["Bagerhat", "Chuadanga", "Jashore", "Jhenaidah", "Khulna", "Kushtia", "Magura", "Meherpur", "Narail", "Satkhira"],
+  "Mymensingh": ["Jamalpur", "Mymensingh", "Netrokona", "Sherpur"],
+  "Rajshahi": ["Bogura", "Joypurhat", "Naogaon", "Natore", "Chapainawabganj", "Pabna", "Rajshahi", "Sirajganj"],
+  "Rangpur": ["Dinajpur", "Gaibandha", "Kurigram", "Lalmonirhat", "Nilphamari", "Panchagarh", "Rangpur", "Thakurgaon"],
+  "Sylhet": ["Habiganj", "Moulvibazar", "Sunamganj", "Sylhet"]
+};
 
 export default function CheckoutPage({ params }: { params: { domain: string } }) {
   const domain = params.domain;
@@ -10,6 +23,7 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
     email: "",
     address: "",
     division: "",
+    district: "",
     note: "",
     payment: "cod",
     promo: ""
@@ -50,7 +64,8 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
   };
 
   const getTotal = () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const deliveryCharge = 70;
+  // Delivery charge: 70 BDT for Dhaka, 120 BDT for others
+  const deliveryCharge = form.division === "Dhaka" ? 70 : (form.division ? 120 : 0);
   const vat = 0;
 
   // Confirm order
@@ -61,14 +76,34 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
       return;
     }
     try {
+      // 1. Fetch website UUID by domain
+      const websiteRes = await fetch(`http://localhost:5000/api/websites/by-domain/${domain}`);
+      if (!websiteRes.ok) {
+        const errorText = await websiteRes.text();
+        alert('Website fetch error: ' + errorText);
+        return;
+      }
+      const websiteData = await websiteRes.json();
+      const websiteId = websiteData.id;
+      if (!websiteId) {
+        alert('Website ID not found for domain: ' + domain);
+        return;
+      }
+
+      // 2. Submit order with correct websiteId
       const res = await fetch('http://localhost:5000/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...form,
+          customerName: form.name,
+          customerPhone: form.phone,
+          customerAddress: form.address,
           items: cart,
-          domain,
-          total: getTotal() + deliveryCharge
+          totalAmount: getTotal() + deliveryCharge,
+          websiteId,
+          division: form.division,
+          district: form.district,
+          note: form.note,
         })
       });
       if (res.ok) {
@@ -76,10 +111,13 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
         setCart([]);
         localStorage.removeItem(`cart_${domain}`);
       } else {
-        alert('অর্ডার জমা দিতে সমস্যা হয়েছে');
+        const errorText = await res.text();
+        alert('অর্ডার জমা দিতে সমস্যা হয়েছে: ' + errorText);
+        console.error('Order submit error:', errorText);
       }
-    } catch {
+    } catch (err) {
       alert('সার্ভার সমস্যা হয়েছে');
+      console.error('Order submit network/server error:', err);
     }
   };
   return (
@@ -95,17 +133,46 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
             </div>
             <input type="email" placeholder="Email address (Optional)" className="w-full border rounded px-3 py-2" value={form.email} onChange={e => setForm(f => ({...f, email: e.target.value}))} />
             <input type="text" placeholder="House no, thana, street, direction etc*" className="w-full border rounded px-3 py-2" required value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} />
-            <select className="w-full border rounded px-3 py-2" value={form.division} onChange={e => setForm(f => ({...f, division: e.target.value}))} required>
-              <option value="">Select division</option>
-              <option value="Dhaka">Dhaka</option>
-              <option value="Chattogram">Chattogram</option>
-              <option value="Khulna">Khulna</option>
-              <option value="Rajshahi">Rajshahi</option>
-              <option value="Barisal">Barisal</option>
-              <option value="Sylhet">Sylhet</option>
-              <option value="Rangpur">Rangpur</option>
-              <option value="Mymensingh">Mymensingh</option>
-            </select>
+            {/* Division dropdown */}
+            <div className="relative mb-2">
+              <select
+                className="w-full border rounded px-3 py-2 appearance-none"
+                value={form.division}
+                onChange={e => setForm(f => ({...f, division: e.target.value, district: ""}))}
+                required
+              >
+                <option value="">Select division</option>
+                <option value="Dhaka">Dhaka</option>
+                <option value="Chattogram">Chattogram</option>
+                <option value="Khulna">Khulna</option>
+                <option value="Rajshahi">Rajshahi</option>
+                <option value="Barisal">Barisal</option>
+                <option value="Sylhet">Sylhet</option>
+                <option value="Rangpur">Rangpur</option>
+                <option value="Mymensingh">Mymensingh</option>
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+              </span>
+            </div>
+            {/* District dropdown */}
+            <div className="relative mb-2">
+              <select
+                className="w-full border rounded px-3 py-2 appearance-none"
+                value={form.district || ""}
+                onChange={e => setForm(f => ({...f, district: e.target.value}))}
+                required
+                disabled={form.division === ""}
+              >
+                <option value="">Select district</option>
+                {form.division !== "" && bdDivisions[form.division]?.map((district: string) => (
+                  <option key={district} value={district}>{district}</option>
+                ))}
+              </select>
+              <span className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+              </span>
+            </div>
             <textarea placeholder="Add your delivery instructions" className="w-full border rounded px-3 py-2" value={form.note} onChange={e => setForm(f => ({...f, note: e.target.value}))} />
             <div>
               <label className="font-semibold mb-2 block">Payment options</label>
