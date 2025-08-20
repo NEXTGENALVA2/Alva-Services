@@ -1,15 +1,29 @@
+
 "use client";
-import { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { useCart } from "../../components/CartContext";
 
 export default function CheckoutPage() {
-  const [cart, setCart] = useState<any[]>([]);
-
-  useEffect(() => {
-    const savedCart = localStorage.getItem("cart");
-    setCart(savedCart ? JSON.parse(savedCart) : []);
-  }, []);
-
+  const { cart } = useCart();
   const getTotal = () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+  // Bangladesh division & district data
+  const divisions: { [key: string]: string[] } = {
+    "Dhaka": ["Dhaka", "Faridpur", "Gazipur", "Gopalganj", "Kishoreganj", "Madaripur", "Manikganj", "Munshiganj", "Narayanganj", "Narsingdi", "Rajbari", "Shariatpur", "Tangail"],
+    "Chattogram": ["Bandarban", "Brahmanbaria", "Chandpur", "Chattogram", "Comilla", "Cox's Bazar", "Feni", "Khagrachari", "Lakshmipur", "Noakhali", "Rangamati"],
+    "Barisal": ["Barisal", "Barguna", "Bhola", "Jhalokathi", "Patuakhali", "Pirojpur"],
+    "Khulna": ["Bagerhat", "Chuadanga", "Jashore", "Jhenaidah", "Khulna", "Kushtia", "Magura", "Meherpur", "Narail", "Satkhira"],
+    "Mymensingh": ["Jamalpur", "Mymensingh", "Netrokona", "Sherpur"],
+    "Rajshahi": ["Bogura", "Joypurhat", "Naogaon", "Natore", "Chapainawabganj", "Pabna", "Rajshahi", "Sirajganj"],
+    "Rangpur": ["Dinajpur", "Gaibandha", "Kurigram", "Lalmonirhat", "Nilphamari", "Panchagarh", "Rangpur", "Thakurgaon"],
+    "Sylhet": ["Habiganj", "Moulvibazar", "Sunamganj", "Sylhet"]
+  };
+  const [selectedDivision, setSelectedDivision] = useState<string>("");
+  const [selectedDistrict, setSelectedDistrict] = useState<string>("");
+  let deliveryCharge = 0;
+  if (selectedDistrict === "Dhaka") deliveryCharge = 70;
+  else if (selectedDistrict) deliveryCharge = 120;
+  const total = getTotal() + deliveryCharge;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col items-center py-8">
@@ -31,13 +45,57 @@ export default function CheckoutPage() {
             ))}
           </ul>
         )}
-        <div className="font-bold text-xl mb-4">Total: ৳{getTotal()}</div>
+        <div className="font-bold text-xl mb-4">Total: ৳{total}</div>
         <form className="space-y-4">
           <input type="text" placeholder="Name" className="w-full border rounded px-3 py-2" required />
           <input type="text" placeholder="Phone" className="w-full border rounded px-3 py-2" required />
-          <input type="text" placeholder="Address" className="w-full border rounded px-3 py-2" required />
+          <input type="text" placeholder="Email address (Optional)" className="w-full border rounded px-3 py-2" />
+          <input type="text" placeholder="House no, thana, street, direction etc*" className="w-full border rounded px-3 py-2" required />
+          {/* Division select */}
+          <select
+            value={selectedDivision}
+            onChange={e => {
+              setSelectedDivision(e.target.value);
+              setSelectedDistrict("");
+            }}
+            className="w-full border rounded px-3 py-2"
+            required
+          >
+            <option value="">Select division</option>
+            {Object.keys(divisions).map(div => (
+              <option key={div} value={div}>{div}</option>
+            ))}
+          </select>
+          {/* DISTRICT DROPDOWN STARTS HERE - always visible, disabled until division selected */}
+          <div className="relative">
+            <select
+              value={selectedDistrict}
+              onChange={e => setSelectedDistrict(e.target.value)}
+              className="w-full border rounded px-3 py-2 appearance-none"
+              required
+              disabled={selectedDivision === ""}
+            >
+              <option value="">Select district</option>
+              {selectedDivision !== "" && divisions[selectedDivision] && divisions[selectedDivision].map((district: string) => (
+                <option key={district} value={district}>{district}</option>
+              ))}
+            </select>
+            {/* Chevron icon for dropdown */}
+            <span className="pointer-events-none absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+            </span>
+          </div>
+          {/* DISTRICT DROPDOWN ENDS HERE */}
+          <textarea placeholder="Add your delivery instructions" className="w-full border rounded px-3 py-2" />
           <button type="submit" className="w-full bg-green-600 text-white py-2 rounded font-bold">Confirm Order</button>
         </form>
+        <div className="mt-4">Delivery charge: <b>{deliveryCharge} BDT</b></div>
+        <button
+          className="w-full bg-blue-600 text-white py-2 rounded mt-4"
+          onClick={() => {
+            window.location.href = "/products";
+          }}
+        >+ Add more items</button>
       </div>
     </div>
   );

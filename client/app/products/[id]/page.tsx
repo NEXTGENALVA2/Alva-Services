@@ -11,11 +11,15 @@ export default function ProductDetailsPage() {
   const [product, setProduct] = React.useState<any>(null);
   const router = useRouter();
 
+  // Get domain from URL (window.location or params)
+  const domain = typeof window !== 'undefined' ? window.location.pathname.split('/')[1] : '';
   React.useEffect(() => {
-    fetch(`http://localhost:5000/api/products/${productId}`)
-      .then(res => res.json())
-      .then(data => setProduct(data));
-  }, [productId]);
+    if (domain && productId) {
+      fetch(`http://localhost:5000/api/products/${domain}/${productId}`)
+        .then(res => res.json())
+        .then(data => setProduct(data));
+    }
+  }, [domain, productId]);
 
   if (!product) return <div className="p-8">Loading...</div>;
 

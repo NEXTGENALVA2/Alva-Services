@@ -4,11 +4,17 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
-// Get single product by ID (public)
-router.get('/:id', async (req, res) => {
+// Get single product by domain and ID (public)
+router.get('/:domain/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const product = await Product.findOne({ where: { id } });
+    const { domain, id } = req.params;
+    // Find website by domain
+    const website = await Website.findOne({ where: { domain } });
+    if (!website) {
+      return res.status(404).json({ message: 'Website not found' });
+    }
+    // Find product by id and websiteId
+    const product = await Product.findOne({ where: { id, websiteId: website.id } });
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }

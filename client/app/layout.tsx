@@ -11,9 +11,16 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // CartProvider import
+  // ...existing code...
+  const CartProvider = require('../components/CartContext').CartProvider;
   return (
     <html lang="bn">
-      <body>{children}</body>
+      <body>
+        <CartProvider>
+          {children}
+        </CartProvider>
+      </body>
     </html>
   )
 }

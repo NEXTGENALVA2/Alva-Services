@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useCart } from '../../components/CartContext';
 import axios from 'axios';
 import { ShoppingCart, Plus, Minus, Star, Menu, X, Search, Heart, User, Globe } from 'lucide-react';
 
@@ -270,7 +271,7 @@ export default function Page({ params }: { params: { domain: string } }) {
   const [website, setWebsite] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const { cart, setCart, updateQuantity, removeFromCart } = useCart();
   const [showCart, setShowCart] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -312,7 +313,7 @@ export default function Page({ params }: { params: { domain: string } }) {
       try {
         setLoading(true);
         const [websiteRes, bannerRes] = await Promise.all([
-          fetch(`http://localhost:5000/api/website/public/${params.domain}`),
+          fetch(`http://localhost:5000/api/websites/public/${params.domain}`),
           axios.get(`http://localhost:5000/api/banner?domain=${params.domain}`).catch(() => null)
         ]);
         
@@ -382,20 +383,6 @@ const addToCart = (product: any) => {
   });
 };
 
-const removeFromCart = (productId: string) => {
-  console.debug('[cart] removeFromCart', productId);
-  setCart(prevCart => prevCart.filter(item => item.id !== productId));
-};
-
-const updateQuantity = (productId: string, newQuantity: number) => {
-  if (newQuantity <= 0) {
-    removeFromCart(productId);
-  } else {
-    setCart(prevCart =>
-      prevCart.map(item => (item.id === productId ? { ...item, quantity: newQuantity } : item))
-    );
-  }
-};
 
 const getTotalPrice = () => {
   return cart.reduce((total, item) => total + item.price * item.quantity, 0);

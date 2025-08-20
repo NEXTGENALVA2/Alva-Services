@@ -88,7 +88,7 @@ export default function Dashboard() {
         return;
       }
       
-      const response = await axios.get('http://localhost:5000/api/website', {
+      const response = await axios.get('http://localhost:5000/api/websites', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -128,7 +128,7 @@ export default function Dashboard() {
     }
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.post('http://localhost:5000/api/website/create',
+      const response = await axios.post('http://localhost:5000/api/websites/create',
         { name: name.trim() },
         { headers: { Authorization: `Bearer ${token}` } }
       );

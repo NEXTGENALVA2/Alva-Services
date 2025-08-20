@@ -3,6 +3,27 @@ const { Website, User, Banner } = require('../models');
 const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
+
+// DEBUG: List all websites for a user
+router.get('/user/:userId', async (req, res) => {
+  const { userId } = req.params;
+  try {
+    const websites = await Website.findAll({ where: { userId } });
+    res.json(websites);
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching websites', error: error.message });
+  }
+});
+
+// GET /api/websites/by-domain/:domain
+router.get('/by-domain/:domain', async (req, res) => {
+  const { domain } = req.params;
+  const website = await Website.findOne({ where: { domain } });
+  if (!website) {
+    return res.status(404).json({ message: 'Website not found' });
+  }
+  res.json({ id: website.id, domain: website.domain });
+});
 // Public: Get website by domain (for dynamic frontend)
 router.get('/public/:domain', async (req, res) => {
   try {
@@ -40,15 +61,18 @@ router.post('/create', authMiddleware, async (req, res) => {
   try {
     const { name, theme = 'default' } = req.body;
     const userId = req.user.id;
+    console.log('DEBUG: Website creation requested:', { name, theme, userId });
 
     // Check if user already has a website
     const existingWebsite = await Website.findOne({ where: { userId } });
     if (existingWebsite) {
+      console.log('DEBUG: User already has a website:', existingWebsite.domain);
       return res.status(400).json({ message: 'User already has a website' });
     }
 
     // Generate unique domain
     const domain = `${name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+    console.log('DEBUG: Generated domain:', domain);
 
     const website = await Website.create({
       name,
@@ -65,6 +89,7 @@ router.post('/create', authMiddleware, async (req, res) => {
         }
       }
     });
+    console.log('DEBUG: Website created:', { id: website.id, name: website.name, domain: website.domain, userId: website.userId });
 
     res.status(201).json({
       message: 'Website created successfully!',
@@ -76,6 +101,7 @@ router.post('/create', authMiddleware, async (req, res) => {
       }
     });
   } catch (error) {
+    console.log('DEBUG: Error creating website:', error.message);
     res.status(500).json({ message: 'Error creating website', error: error.message });
   }
 });

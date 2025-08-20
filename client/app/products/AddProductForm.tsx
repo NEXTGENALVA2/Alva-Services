@@ -97,9 +97,55 @@ export default function AddProductForm() {
     setDetails(ds => ds.filter((_, i) => i !== idx));
   };
 
+  // --- Submit Handler ---
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // ডোমেইন/websiteId সংগ্রহ করুন
+    const domain = typeof window !== 'undefined' ? window.location.hostname : '';
+    const productData = {
+      name,
+      shortDesc,
+      desc,
+      category,
+      brand,
+      condition,
+      status,
+      images,
+      video,
+      sellPrice,
+      oldPrice,
+      buyPrice,
+      serial,
+      sku,
+      unit,
+      stock,
+      warranty,
+      soldCount,
+      deliveryApplied,
+      variants,
+      details,
+      domain, // backend-এ পাঠানোর জন্য
+    };
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData),
+      });
+      if (res.ok) {
+        alert('পণ্য সফলভাবে যোগ হয়েছে!');
+        // ফর্ম রিসেট/রিডাইরেক্ট করুন
+      } else {
+        alert('পণ্য যোগ করতে সমস্যা হয়েছে!');
+      }
+    } catch (err) {
+      alert('সার্ভার সমস্যা হয়েছে!');
+    }
+  };
+
   // --- Render ---
   return (
-    <form className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md space-y-6">
+    <form className="max-w-4xl mx-auto bg-white p-8 rounded-lg shadow-md space-y-6" onSubmit={handleSubmit}>
       <h2 className="text-2xl font-bold mb-6">Add Product</h2>
       
       {/* Basic Information */}

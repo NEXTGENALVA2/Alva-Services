@@ -8,59 +8,176 @@ export default function ProductDetailsPage({ params }: { params: { domain: strin
   const [product, setProduct] = React.useState<any>(null);
   const [website, setWebsite] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
   const [quantity, setQuantity] = React.useState(1);
   const router = useRouter();
 
+  // Debug state for cart
+  const [debugCart, setDebugCart] = React.useState<any[]>([]);
+  const showCartDebug = () => {
+    const cartKey = `cart_${params.domain}`;
+    const cart = localStorage.getItem(cartKey);
+    setDebugCart(cart ? JSON.parse(cart) : []);
+    console.log('Debug cart:', cart);
+  };
+
   React.useEffect(() => {
-    // Fetch website data
-    fetch(`http://localhost:5000/api/website/public/${params.domain}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.website) {
-          setWebsite(data.website);
-          // Find the specific product from website's products
-          const foundProduct = data.products?.find((p: any) => p.id === params.id);
-          if (foundProduct) {
-            setProduct(foundProduct);
-          }
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      console.log('Fetching product:', params.domain, params.id);
+      
+      // Set timeout to avoid infinite loading
+      const timeout = setTimeout(() => {
+        setError('Request timeout - server may be slow');
+        setLoading(false);
+      }, 10000); // 10 second timeout
+      
+      try {
+        // Fetch product directly by domain and id
+        const productRes = await fetch(`http://localhost:5000/api/products/${params.domain}/${params.id}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('Product response status:', productRes.status);
+        
+        if (productRes.ok) {
+          const productData = await productRes.json();
+          console.log('Product data:', productData);
+          setProduct(productData);
+          setError(null);
+        } else {
+          console.error('Product not found:', productRes.status);
+          const errorText = await productRes.text();
+          console.error('Error details:', errorText);
+          setProduct(null);
+          setError('পণ্য পাওয়া যায়নি');
         }
+        
+        // Fetch website info
+        const websiteRes = await fetch(`http://localhost:5000/api/websites/public/${params.domain}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('Website response status:', websiteRes.status);
+        
+        if (websiteRes.ok) {
+          const websiteData = await websiteRes.json();
+          console.log('Website data:', websiteData);
+          setWebsite(websiteData.website);
+        } else {
+          console.error('Website fetch failed:', websiteRes.status);
+          // Don't set website if not found, but don't error out
+        }
+        
+      } catch (error) {
+        console.error('Fetch error:', error);
+        setProduct(null);
+        setWebsite(null);
+        setError('ডেটা লোড করতে সমস্যা হয়েছে');
+      } finally {
+        clearTimeout(timeout);
         setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-      });
+      }
+    };
+    
+    fetchData();
   }, [params.domain, params.id]);
 
   const addToCart = (product: any) => {
     const cartKey = `cart_${params.domain}`;
     const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]');
     
-    const existingItem = existingCart.find((item: any) => item.id === product.id);
+    console.log('Adding to cart:', product.id, 'quantity:', quantity);
+    console.log('Existing cart:', existingCart);
+    
+    // Use string ID to match home page pattern
+    const pid = (product?.id ?? product?._id ?? '').toString();
+    
+    const existingItem = existingCart.find((item: any) => item.id === pid);
+    let updatedCart;
+    
     if (existingItem) {
-      existingItem.quantity += quantity;
+      updatedCart = existingCart.map((item: any) =>
+        item.id === pid ? { ...item, quantity: item.quantity + quantity } : item
+      );
     } else {
-      existingCart.push({
-        id: product.id,
-        name: product.name,
-        price: product.price,
+      updatedCart = [...existingCart, {
+        id: pid,
+        name: product?.name ?? product?.title ?? 'Product',
+        price: Number(product?.price ?? product?.sellingPrice ?? 0) || 0,
         quantity: quantity,
-        image: product.images?.[0] || ''
-      });
+        image: product?.images?.[0] || product?.image || product?.imageUrl || ''
+      }];
     }
     
-    localStorage.setItem(cartKey, JSON.stringify(existingCart));
+    localStorage.setItem(cartKey, JSON.stringify(updatedCart));
+    console.log('Cart after adding:', updatedCart);
     alert('পণ্যটি কার্টে যোগ করা হয়েছে!');
   };
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
+  const buyNow = () => {
+    // Add to cart first (without alert) - same pattern as home page
+    const cartKey = `cart_${params.domain}`;
+    const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]');
+    
+    console.log('Buy Now - Adding to cart:', product.id, 'quantity:', quantity);
+    console.log('Buy Now - Existing cart:', existingCart);
+    
+    // Use string ID to match home page pattern
+    const pid = (product?.id ?? product?._id ?? '').toString();
+    
+    const existingItem = existingCart.find((item: any) => item.id === pid);
+    let updatedCart;
+    
+    if (existingItem) {
+      updatedCart = existingCart.map((item: any) =>
+        item.id === pid ? { ...item, quantity: item.quantity + quantity } : item
+      );
+    } else {
+      updatedCart = [...existingCart, {
+        id: pid,
+        name: product?.name ?? product?.title ?? 'Product',
+        price: Number(product?.price ?? product?.sellingPrice ?? 0) || 0,
+        quantity: quantity,
+        image: product?.images?.[0] || product?.image || product?.imageUrl || ''
+      }];
+    }
+    
+    localStorage.setItem(cartKey, JSON.stringify(updatedCart));
+    console.log('Buy Now - Cart after adding:', updatedCart);
+    
+    // Then redirect to checkout (same as home page)
+    window.location.href = `/${params.domain}/checkout`;
+  };
 
-  if (!website || !product) {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">পণ্যের তথ্য লোড হচ্ছে...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !website || !product) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <h1 className="text-2xl font-bold text-red-600 mb-4">পণ্য পাওয়া যায়নি</h1>
+        <h1 className="text-2xl font-bold text-red-600 mb-4">
+          {error || 'পণ্য পাওয়া যায়নি'}
+        </h1>
+        <p className="text-gray-600 mb-4">
+          Domain: {params.domain}, Product ID: {params.id}
+        </p>
         <button 
           onClick={() => router.push(`/${params.domain}`)}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           ওয়েবসাইটে ফিরে যান
         </button>
@@ -190,20 +307,17 @@ export default function ProductDetailsPage({ params }: { params: { domain: strin
                 <button
                   onClick={() => addToCart(product)}
                   disabled={product.stock === 0}
-                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                  className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
                 >
                   <ShoppingCart className="h-5 w-5" />
-                  <span>কার্টে যোগ করুন</span>
+                  <span>Add to Cart</span>
                 </button>
                 <button
-                  onClick={() => {
-                    addToCart(product);
-                    router.push(`/${params.domain}?showCart=true`);
-                  }}
+                  onClick={buyNow}
                   disabled={product.stock === 0}
-                  className="w-full bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
                 >
-                  এখনই কিনুন
+                  Buy Now
                 </button>
               </div>
 
