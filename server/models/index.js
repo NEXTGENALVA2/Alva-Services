@@ -82,11 +82,19 @@ const Order = sequelize.define('Order', {
   customerEmail: DataTypes.STRING,
   customerPhone: { type: DataTypes.STRING, allowNull: false },
   customerAddress: { type: DataTypes.TEXT, allowNull: false },
+  customerDivision: DataTypes.STRING,
+  customerDistrict: DataTypes.STRING,
   totalAmount: { type: DataTypes.DECIMAL(10, 2), allowNull: false },
+  subTotal: DataTypes.DECIMAL(10, 2),
+  deliveryCharge: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
+  deliveryType: { type: DataTypes.ENUM('normal', 'express'), defaultValue: 'normal' },
+  note: DataTypes.TEXT,
   status: { type: DataTypes.ENUM('pending', 'confirmed', 'shipped', 'delivered', 'cancelled'), defaultValue: 'pending' },
   paymentStatus: { type: DataTypes.ENUM('pending', 'paid', 'failed'), defaultValue: 'pending' },
+  paymentMethod: { type: DataTypes.STRING, defaultValue: 'cash_on_delivery' },
   trackingNumber: DataTypes.STRING,
   courierService: DataTypes.STRING,
+  websiteId: { type: DataTypes.UUID, allowNull: false, references: { model: 'Websites', key: 'id' } },
 });
 
 // Order Items model
