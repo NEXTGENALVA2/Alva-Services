@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useCart } from '../../components/CartContext';
+import { useTheme } from '../../components/ThemeContext';
 import axios from 'axios';
 import { ShoppingCart, Plus, Minus, Star, Menu, X, Search, Heart, User, Globe } from 'lucide-react';
 
@@ -268,6 +269,7 @@ const t = (key: string, lang: string = 'bn'): string => {
 };
 
 export default function Page({ params }: { params: { domain: string } }) {
+  const { theme } = useTheme(); // Theme context hook
   const [website, setWebsite] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -295,16 +297,45 @@ export default function Page({ params }: { params: { domain: string } }) {
     const fetchWebsiteData = async () => {
       try {
         setLoading(true);
+        console.log('DEBUG: Fetching website data for domain:', params.domain);
+        
         const [websiteRes, bannerRes] = await Promise.all([
           fetch(`http://localhost:5000/api/websites/public/${params.domain}`),
           axios.get(`http://localhost:5000/api/banner?domain=${params.domain}`).catch(() => null)
         ]);
         
+        console.log('DEBUG: Website response status:', websiteRes.status);
+        
         if (websiteRes.ok) {
           const data = await websiteRes.json();
+          console.log('DEBUG: Website data received:', data);
+          console.log('DEBUG: Products count:', data.products?.length || 0);
+          console.log('DEBUG: Website theme from backend:', data.website?.theme);
+          
           setWebsite(data.website);
           setProducts(data.products || []);
+          
+          // Apply theme from backend to context (without reload)
+          if (data.website?.theme && typeof window !== 'undefined') {
+            const themeMapping: Record<string, any> = {
+              'Basic': { name: 'Basic', colors: { primary: '#6C63FF', secondary: '#F3F4F6', background: '#FFFFFF', text: '#222222' }, mode: 'light' },
+              'Premium': { name: 'Premium', colors: { primary: '#232946', secondary: '#E9EAEC', background: '#F7F7F7', text: '#232946' }, mode: 'light' },
+              'Aurora': { name: 'Aurora', colors: { primary: '#FF6B6B', secondary: '#FFE66D', background: '#F0F0F0', text: '#222222' }, mode: 'light' }
+            };
+            const backendTheme = themeMapping[data.website.theme] || themeMapping['Basic'];
+            const currentTheme = localStorage.getItem('activeTheme');
+            
+            // Only update if theme is different
+            if (!currentTheme || JSON.parse(currentTheme).name !== backendTheme.name) {
+              localStorage.setItem('activeTheme', JSON.stringify(backendTheme));
+              console.log('DEBUG: Theme updated from backend:', backendTheme.name);
+              // Trigger a custom event to notify ThemeContext
+              window.dispatchEvent(new CustomEvent('themeUpdated', { detail: backendTheme }));
+            }
+          }
         } else {
+          const errorText = await websiteRes.text();
+          console.error('DEBUG: Website fetch failed:', websiteRes.status, errorText);
           setWebsite(null);
           setProducts([]);
         }
@@ -314,9 +345,9 @@ export default function Page({ params }: { params: { domain: string } }) {
           setBanner(`http://localhost:5000${bannerRes.data.imageUrl}`);
         }
       } catch (error) {
+        console.error('DEBUG: Website fetch error:', error);
         setWebsite(null);
         setProducts([]);
-        console.error('API Error:', error);
       } finally {
         setLoading(false);
       }
@@ -531,14 +562,16 @@ const getTotalPrice = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen" style={{ background: theme.colors.background }}>
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="shadow-sm" style={{ background: theme.colors.background }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Top bar */}
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900">{website.name}</h1>
+              <h1 className="text-2xl font-bold" style={{ color: theme.colors.primary }}>
+                {website.name}
+              </h1>
             </div>
             
             {/* Search */}
@@ -548,7 +581,13 @@ const getTotalPrice = () => {
                 <input
                   type="text"
                   placeholder={t('searchPlaceholder', currentLang)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
+                  style={{ 
+                    borderColor: theme.colors.primary + '30',
+                    backgroundColor: theme.colors.background,
+                    color: theme.colors.text,
+                    '--tw-ring-color': theme.colors.primary + '50'
+                  } as React.CSSProperties}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -565,6 +604,11 @@ const getTotalPrice = () => {
                   localStorage.setItem('websiteLang', e.target.value);
                 }}
                 className="border rounded px-2 py-1 text-sm"
+                style={{ 
+                  borderColor: theme.colors.primary,
+                  backgroundColor: theme.colors.background,
+                  color: theme.colors.text
+                }}
               >
                 <option value="bn">বাংলা</option>
                 <option value="en">English</option>
@@ -574,12 +618,14 @@ const getTotalPrice = () => {
               <User className="h-6 w-6 text-gray-600 cursor-pointer hover:text-blue-500" />
               <button
                 onClick={() => setShowCart(true)}
-                className="relative p-2 text-gray-600 hover:text-blue-500"
+                className="relative p-2 hover:opacity-80 transition-opacity"
+                style={{ color: theme.colors.text }}
               >
                 <ShoppingCart className="h-6 w-6" />
                 {cart.length > 0 && (
                   <span 
-                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
+                    className="absolute -top-1 -right-1 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
+                    style={{ backgroundColor: theme.colors.primary }}
                     data-cart-count
                   >
                     {cart.reduce((sum, item) => sum + item.quantity, 0)}
@@ -589,6 +635,7 @@ const getTotalPrice = () => {
               <button
                 className="md:hidden"
                 onClick={() => setShowMobileMenu(true)}
+                style={{ color: theme.colors.text }}
               >
                 <Menu className="h-6 w-6" />
               </button>
@@ -602,11 +649,11 @@ const getTotalPrice = () => {
                 setSelectedCategory('all');
                 setSelectedSubcategory('all');
               }}
-              className={`px-3 py-2 text-sm font-medium rounded-md ${
-                selectedCategory === 'all'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
+              className="px-3 py-2 text-sm font-medium rounded-md transition-colors"
+              style={{
+                backgroundColor: selectedCategory === 'all' ? theme.colors.primary + '20' : 'transparent',
+                color: selectedCategory === 'all' ? theme.colors.primary : theme.colors.text
+              }}
             >
               {t('allProducts', currentLang)}
             </button>
@@ -618,24 +665,28 @@ const getTotalPrice = () => {
                     setSelectedCategory(category);
                     setSelectedSubcategory('all');
                   }}
-                  className={`px-3 py-2 text-sm font-medium rounded-md ${
-                    selectedCategory === category
-                      ? 'bg-blue-100 text-blue-700'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  className="px-3 py-2 text-sm font-medium rounded-md transition-colors"
+                  style={{
+                    backgroundColor: selectedCategory === category ? theme.colors.primary + '20' : 'transparent',
+                    color: selectedCategory === category ? theme.colors.primary : theme.colors.text
+                  }}
                 >
                   {category}
                 </button>
                 
                 {/* Subcategory Dropdown */}
-                <div className="absolute left-0 top-full mt-1 w-48 bg-white shadow-lg rounded-md border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div 
+                  className="absolute left-0 top-full mt-1 w-48 shadow-lg rounded-md border opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
+                  style={{ backgroundColor: theme.colors.background }}
+                >
                   <div className="py-2">
                     <button
                       onClick={() => {
                         setSelectedCategory(category);
                         setSelectedSubcategory('all');
                       }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2 text-sm hover:opacity-80"
+                      style={{ color: theme.colors.text }}
                     >
                       All {category}
                     </button>
@@ -646,9 +697,11 @@ const getTotalPrice = () => {
                           setSelectedCategory(category);
                           setSelectedSubcategory(subcategory);
                         }}
-                        className={`block w-full text-left px-4 py-2 text-sm hover:bg-gray-100 ${
-                          selectedSubcategory === subcategory ? 'bg-blue-50 text-blue-700' : 'text-gray-700'
-                        }`}
+                        className="block w-full text-left px-4 py-2 text-sm hover:opacity-80"
+                        style={{
+                          backgroundColor: selectedSubcategory === subcategory ? theme.colors.primary + '20' : 'transparent',
+                          color: selectedSubcategory === subcategory ? theme.colors.primary : theme.colors.text
+                        }}
                       >
                         {subcategory}
                       </button>
@@ -668,12 +721,15 @@ const getTotalPrice = () => {
         {/* New Arrivals */}
         {newArrivals.length > 0 && (
           <section className="mb-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('newArrivals', currentLang)}</h2>
+            <h2 className="text-2xl font-bold mb-6" style={{ color: theme.colors.primary }}>
+              {t('newArrivals', currentLang)}
+            </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {newArrivals.map(product => (
                 <div
                   key={product.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                  className="rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
+                  style={{ backgroundColor: theme.colors.background }}
                   onClick={() => window.location.href = `/${params.domain}/products/${product.id}`}
                 >
                   {product.images?.[0] && (
@@ -688,23 +744,27 @@ const getTotalPrice = () => {
                     />
                   )}
                   <div className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-2">{product.name}</h3>
-                    <p className="text-lg font-bold text-green-600 mb-3">{t('currency', currentLang)}{product.price}</p>
+                    <h3 className="font-semibold mb-2" style={{ color: theme.colors.text }}>
+                      {product.name}
+                    </h3>
+                    <p className="text-lg font-bold mb-3" style={{ color: theme.colors.primary }}>
+                      {t('currency', currentLang)}{product.price}
+                    </p>
                     <button
                       onClick={e => { e.stopPropagation(); addToCart(product); }}
-                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors mb-2"
+                      className="w-full text-white py-2 px-4 rounded-md hover:opacity-90 transition-opacity mb-2"
+                      style={{ backgroundColor: theme.colors.primary }}
                     >
                       {t('addToCart', currentLang)}
                     </button>
                     <button
                       onClick={e => {
                         e.stopPropagation();
-                        // Add product to existing cart (don't replace)
                         addToCart(product);
-                        // Redirect to checkout
                         window.location.href = `/${params.domain}/checkout`;
                       }}
-                      className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                      className="w-full text-white py-2 px-4 rounded-md hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: theme.colors.secondary === '#E5E7EB' ? '#10B981' : theme.colors.secondary }}
                     >
                       Buy Now
                     </button>
@@ -718,15 +778,18 @@ const getTotalPrice = () => {
         {/* Best Sellers */}
         {bestSellers.length > 0 && (
           <section className="mb-12">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">{t('bestSellers', currentLang)}</h2>
+            <h2 className="text-2xl font-bold mb-6" style={{ color: theme.colors.primary }}>
+              {t('bestSellers', currentLang)}
+            </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {bestSellers.map(product => (
                 <div
                   key={product.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow relative cursor-pointer"
+                  className="rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow relative cursor-pointer"
+                  style={{ backgroundColor: theme.colors.background }}
                   onClick={() => window.location.href = `/${params.domain}/products/${product.id}`}
                 >
-                  <div className="absolute top-2 left-2 bg-red-500 text-white text-xs px-2 py-1 rounded">
+                  <div className="absolute top-2 left-2 text-white text-xs px-2 py-1 rounded" style={{ backgroundColor: theme.colors.primary }}>
                     {t('bestSeller', currentLang)}
                   </div>
                   {product.images?.[0] && (
@@ -741,23 +804,27 @@ const getTotalPrice = () => {
                     />
                   )}
                   <div className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-2">{product.name}</h3>
-                    <p className="text-lg font-bold text-green-600 mb-3">{t('currency', currentLang)}{product.price}</p>
+                    <h3 className="font-semibold mb-2" style={{ color: theme.colors.text }}>
+                      {product.name}
+                    </h3>
+                    <p className="text-lg font-bold mb-3" style={{ color: theme.colors.primary }}>
+                      {t('currency', currentLang)}{product.price}
+                    </p>
                     <button
                       onClick={e => { e.stopPropagation(); addToCart(product); }}
-                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors mb-2"
+                      className="w-full text-white py-2 px-4 rounded-md hover:opacity-90 transition-opacity mb-2"
+                      style={{ backgroundColor: theme.colors.primary }}
                     >
                       {t('addToCart', currentLang)}
                     </button>
                     <button
                       onClick={e => {
                         e.stopPropagation();
-                        // Add product to existing cart (don't replace)
                         addToCart(product);
-                        // Redirect to checkout
                         window.location.href = `/${params.domain}/checkout`;
                       }}
-                      className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                      className="w-full text-white py-2 px-4 rounded-md hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: theme.colors.secondary === '#E5E7EB' ? '#10B981' : theme.colors.secondary }}
                     >
                       Buy Now
                     </button>
@@ -770,12 +837,14 @@ const getTotalPrice = () => {
 
         {/* All Products */}
         <section>
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
+          <h2 className="text-2xl font-bold mb-6" style={{ color: theme.colors.primary }}>
             {selectedCategory === 'all' ? t('allProducts', currentLang) : selectedCategory}
           </h2>
           {filteredProducts.length === 0 ? (
             <div className="text-center py-12">
-              <div className="text-gray-500 text-lg">{t('noProducts', currentLang)}</div>
+              <div className="text-lg" style={{ color: theme.colors.text }}>
+                {t('noProducts', currentLang)}
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

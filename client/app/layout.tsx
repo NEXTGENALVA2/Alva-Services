@@ -1,5 +1,10 @@
-import '../styles/globals.css'
-import type { Metadata } from 'next'
+import '../styles/globals.css';
+import type { Metadata } from 'next';
+import { CartProvider } from '../components/CartContext';
+import { ThemeProvider } from '../components/ThemeContext';
+import { Inter } from 'next/font/google';
+
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'EcommerceSaaS - ১০ সেকেন্ডে ই-কমার্স ওয়েবসাইট',
@@ -11,16 +16,15 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
-  // CartProvider import
-  // ...existing code...
-  const CartProvider = require('../components/CartContext').CartProvider;
   return (
-    <html lang="bn">
-      <body>
+    <html lang="en">
+      <body className={inter.className}>
         <CartProvider>
-          {children}
+          <ThemeProvider>
+            {children}
+          </ThemeProvider>
         </CartProvider>
       </body>
     </html>
-  )
+  );
 }

@@ -94,10 +94,16 @@ router.post('/', async (req, res) => {
       customerPhone, 
       customerAddress, 
       customerEmail,
+      customerDivision,
+      customerDistrict,
       items, 
-      totalAmount, 
+      totalAmount,
+      subTotal,
+      deliveryCharge = 0,
+      deliveryType = 'normal',
       paymentMethod = 'cash_on_delivery',
-      websiteId 
+      websiteId,
+      note
     } = req.body;
 
     // Validate required fields
@@ -113,16 +119,22 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ message: 'Website not found' });
     }
 
-    // Create order
+    // Create order with delivery information
     const order = await Order.create({
       customerName,
       customerPhone,
       customerAddress,
       customerEmail,
+      customerDivision,
+      customerDistrict,
       totalAmount,
+      subTotal: subTotal || totalAmount - deliveryCharge,
+      deliveryCharge,
+      deliveryType,
       paymentMethod,
       status: 'pending',
-      websiteId
+      websiteId,
+      note
     });
 
     // Create order items

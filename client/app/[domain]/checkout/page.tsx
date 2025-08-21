@@ -17,6 +17,13 @@ const bdDivisions: { [division: string]: string[] } = {
 export default function CheckoutPage({ params }: { params: { domain: string } }) {
   const domain = params.domain;
   const [cart, setCart] = useState<any[]>([]);
+  const [deliveryCharge, setDeliveryCharge] = useState({
+    insideDhaka: 60,
+    outsideDhaka: 120,
+    freeDeliveryMinimum: 1000,
+    expressDelivery: 150
+  });
+  const [selectedDeliveryType, setSelectedDeliveryType] = useState<'normal' | 'express'>('normal');
   const [form, setForm] = useState({
     name: "",
     phone: "",
@@ -32,6 +39,16 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
   useEffect(() => {
     const savedCart = localStorage.getItem(`cart_${domain}`);
     setCart(savedCart ? JSON.parse(savedCart) : []);
+    
+    // Load delivery charge from localStorage
+    const savedDeliveryCharge = localStorage.getItem('deliveryCharge');
+    if (savedDeliveryCharge) {
+      try {
+        setDeliveryCharge(JSON.parse(savedDeliveryCharge));
+      } catch (e) {
+        console.error('Error parsing delivery charge:', e);
+      }
+    }
   }, [domain]);
 
   // Cart item increment
@@ -64,8 +81,28 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
   };
 
   const getTotal = () => cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  // Delivery charge: 70 BDT for Dhaka, 120 BDT for others
-  const deliveryCharge = form.division === "Dhaka" ? 70 : (form.division ? 120 : 0);
+  
+  // Calculate delivery charge based on settings
+  const calculateDeliveryCharge = () => {
+    const total = getTotal();
+    
+    // Free delivery check
+    if (deliveryCharge.freeDeliveryMinimum > 0 && total >= deliveryCharge.freeDeliveryMinimum) {
+      return 0;
+    }
+    
+    // Base delivery charge
+    let baseCharge = form.division === "Dhaka" ? deliveryCharge.insideDhaka : deliveryCharge.outsideDhaka;
+    
+    // Express delivery additional charge
+    if (selectedDeliveryType === 'express' && deliveryCharge.expressDelivery > 0) {
+      baseCharge += deliveryCharge.expressDelivery;
+    }
+    
+    return baseCharge;
+  };
+  
+  const finalDeliveryCharge = calculateDeliveryCharge();
   const vat = 0;
 
   // Confirm order
@@ -90,7 +127,7 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
         return;
       }
 
-      // 2. Submit order with correct websiteId
+      // 2. Submit order with correct websiteId and delivery information
       const res = await fetch('http://localhost:5000/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -98,12 +135,17 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
           customerName: form.name,
           customerPhone: form.phone,
           customerAddress: form.address,
-          items: cart,
-          totalAmount: getTotal() + deliveryCharge,
-          websiteId,
-          division: form.division,
-          district: form.district,
+          customerEmail: form.email,
+          customerDivision: form.division,
+          customerDistrict: form.district,
           note: form.note,
+          items: cart,
+          subTotal: getTotal(),
+          deliveryCharge: finalDeliveryCharge,
+          deliveryType: selectedDeliveryType,
+          totalAmount: getTotal() + finalDeliveryCharge,
+          paymentMethod: form.payment,
+          websiteId,
         })
       });
       if (res.ok) {
@@ -184,6 +226,51 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
                 {/* Add more payment options if needed */}
               </div>
             </div>
+
+            {/* Delivery Type Selection */}
+            {deliveryCharge.expressDelivery > 0 && (
+              <div>
+                <label className="font-semibold mb-2 block">Delivery Type</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input 
+                      type="radio" 
+                      name="delivery" 
+                      value="normal" 
+                      checked={selectedDeliveryType === "normal"} 
+                      onChange={e => setSelectedDeliveryType('normal')} 
+                    />
+                    Normal Delivery (2-3 days)
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input 
+                      type="radio" 
+                      name="delivery" 
+                      value="express" 
+                      checked={selectedDeliveryType === "express"} 
+                      onChange={e => setSelectedDeliveryType('express')} 
+                    />
+                    Express Delivery (+৳{deliveryCharge.expressDelivery}) (1 day)
+                  </label>
+                </div>
+              </div>
+            )}
+
+            {/* Delivery Charge Info */}
+            <div className="bg-blue-50 p-3 rounded text-sm">
+              <h4 className="font-medium mb-1">ডেলিভারি তথ্য:</h4>
+              <div className="space-y-1">
+                <div>• ঢাকার ভিতরে: ৳{deliveryCharge.insideDhaka}</div>
+                <div>• ঢাকার বাইরে: ৳{deliveryCharge.outsideDhaka}</div>
+                {deliveryCharge.freeDeliveryMinimum > 0 && (
+                  <div>• ৳{deliveryCharge.freeDeliveryMinimum}+ অর্ডারে ফ্রি ডেলিভারি</div>
+                )}
+                {deliveryCharge.expressDelivery > 0 && (
+                  <div>• এক্সপ্রেস ডেলিভারি: +৳{deliveryCharge.expressDelivery}</div>
+                )}
+              </div>
+            </div>
+            
             <div className="bg-red-100 text-red-700 p-2 rounded text-sm">
               Bkash/Rocket/Nagad/Upay Personal (01964485930) For camera 500 Advance, Gadgets 200, Films Cash On. Write Last 3 Digits In Order Note.
             </div>
@@ -194,10 +281,26 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
             <div className="mt-6">
               <div className="flex justify-between mb-2"><span>Sub Total</span><span>{getTotal()} BDT</span></div>
               <div className="flex justify-between mb-2"><span>VAT / TAX (0%)</span><span>{vat} BDT</span></div>
-              <div className="flex justify-between mb-2"><span>Delivery charge</span><span>{deliveryCharge} BDT</span></div>
-              <div className="flex justify-between font-bold text-lg mt-2"><span>Total</span><span>{getTotal() + deliveryCharge} BDT</span></div>
+              <div className="flex justify-between mb-2">
+                <span>Delivery charge</span>
+                <span>
+                  {finalDeliveryCharge === 0 ? 'FREE' : `${finalDeliveryCharge} BDT`}
+                  {selectedDeliveryType === 'express' && deliveryCharge.expressDelivery > 0 && (
+                    <span className="text-sm text-blue-600"> (Express)</span>
+                  )}
+                </span>
+              </div>
+              {deliveryCharge.freeDeliveryMinimum > 0 && getTotal() >= deliveryCharge.freeDeliveryMinimum && (
+                <div className="text-green-600 text-sm mb-2">🎉 আপনি ফ্রি ডেলিভারি পেয়েছেন!</div>
+              )}
+              <div className="flex justify-between font-bold text-lg mt-2">
+                <span>Total</span>
+                <span>{getTotal() + finalDeliveryCharge} BDT</span>
+              </div>
             </div>
-            <button type="submit" className="w-full bg-green-700 text-white py-3 rounded font-bold mt-4">Total {getTotal() + deliveryCharge} BDT | Confirm order</button>
+            <button type="submit" className="w-full bg-green-700 text-white py-3 rounded font-bold mt-4">
+              Total {getTotal() + finalDeliveryCharge} BDT | Confirm order
+            </button>
           </form>
         </div>
         {/* Right: Cart Summary */}

@@ -117,7 +117,24 @@ export default function AddProductForm({ onSubmit, initialImages }: AddProductFo
   const [stock, setStock] = useState('');
   const [warranty, setWarranty] = useState('');
   const [soldCount, setSoldCount] = useState('0');
+  // Delivery charge state
   const [deliveryApplied, setDeliveryApplied] = useState(true);
+  const [deliveryCharge, setDeliveryCharge] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('deliveryCharge');
+      if (stored) {
+        try {
+          // Parse delivery charge settings and use inside Dhaka as default
+          const parsedSettings = JSON.parse(stored);
+          return parsedSettings.insideDhaka?.toString() || '';
+        } catch (e) {
+          // If it's a simple string, use it as-is
+          return stored;
+        }
+      }
+    }
+    return '';
+  });
   const [variants, setVariants] = useState<ProductVariant[]>([
     { mandatory: true, title: '', options: [{ attribute: '', extraPrice: '' }] }
   ]);
@@ -275,6 +292,10 @@ export default function AddProductForm({ onSubmit, initialImages }: AddProductFo
     console.log('DEBUG: desc value:', desc);
     console.log('DEBUG: shortDesc value:', shortDesc);
     
+    // Save delivery charge to localStorage for future uploads
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('deliveryCharge', deliveryCharge);
+    }
     const productData = {
       name: name.trim(),
       shortDesc,
@@ -296,7 +317,8 @@ export default function AddProductForm({ onSubmit, initialImages }: AddProductFo
       warranty,
       variants: filteredVariants,
       details: filteredDetails,
-      deliveryApplied
+      deliveryApplied,
+      deliveryCharge: deliveryCharge ? parseFloat(deliveryCharge) : null
     };
 
     console.log('DEBUG: Sending product data:', productData);
@@ -697,6 +719,14 @@ export default function AddProductForm({ onSubmit, initialImages }: AddProductFo
           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
         />
         <span className="text-sm font-medium text-gray-700">Apply delivery charges</span>
+        <input
+          type="number"
+          className="ml-4 w-32 border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          value={deliveryCharge}
+          onChange={e => setDeliveryCharge(e.target.value)}
+          placeholder="Delivery Charge"
+          min="0"
+        />
       </div>
 
       {/* Submit */}

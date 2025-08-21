@@ -4,6 +4,32 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
+// Update website theme
+router.put('/:websiteId/theme', authMiddleware, async (req, res) => {
+  try {
+    console.log('DEBUG: Theme update request for websiteId:', req.params.websiteId);
+    console.log('DEBUG: Theme data:', req.body.theme);
+    
+    const { websiteId } = req.params;
+    const { theme } = req.body;
+    const website = await Website.findByPk(websiteId);
+    
+    if (!website) {
+      console.log('DEBUG: Website not found for theme update:', websiteId);
+      return res.status(404).json({ message: 'Website not found' });
+    }
+    
+    website.theme = theme.name || 'default';
+    await website.save();
+    
+    console.log('DEBUG: Theme updated successfully:', website.theme);
+    res.json({ message: 'Theme updated!', theme: website.theme });
+  } catch (error) {
+    console.error('DEBUG: Theme update error:', error);
+    res.status(500).json({ message: 'Theme update failed', error: error.message });
+  }
+});
+
 // DEBUG: List all websites for a user
 router.get('/user/:userId', async (req, res) => {
   const { userId } = req.params;
@@ -27,6 +53,8 @@ router.get('/by-domain/:domain', async (req, res) => {
 // Public: Get website by domain (for dynamic frontend)
 router.get('/public/:domain', async (req, res) => {
   try {
+    console.log('DEBUG: Fetching website for domain:', req.params.domain);
+    
     const website = await Website.findOne({
       where: { domain: req.params.domain },
       include: [
@@ -34,7 +62,9 @@ router.get('/public/:domain', async (req, res) => {
         { model: Banner, where: { isActive: true }, required: false, order: [['order', 'ASC']] }
       ]
     });
+    
     if (!website) {
+      console.log('DEBUG: Website not found for domain:', req.params.domain);
       return res.status(404).json({ message: 'Website not found' });
     }
     
@@ -52,6 +82,7 @@ router.get('/public/:domain', async (req, res) => {
       banners: website.Banners || []
     });
   } catch (error) {
+    console.error('DEBUG: Error fetching website:', error);
     res.status(500).json({ message: 'Error fetching website', error: error.message });
   }
 });
