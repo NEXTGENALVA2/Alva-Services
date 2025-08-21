@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import React from 'react';
 import { ArrowLeft, ShoppingCart, Plus, Minus } from 'lucide-react';
+import { useCart } from '../../../../components/CartContext';
 
 export default function ProductDetailsPage({ params }: { params: { domain: string; id: string } }) {
   const [product, setProduct] = React.useState<any>(null);
@@ -11,14 +12,13 @@ export default function ProductDetailsPage({ params }: { params: { domain: strin
   const [error, setError] = React.useState<string | null>(null);
   const [quantity, setQuantity] = React.useState(1);
   const router = useRouter();
+  const { cart, addToCart: addToCartContext, refreshCart } = useCart();
 
   // Debug state for cart
   const [debugCart, setDebugCart] = React.useState<any[]>([]);
   const showCartDebug = () => {
-    const cartKey = `cart_${params.domain}`;
-    const cart = localStorage.getItem(cartKey);
-    setDebugCart(cart ? JSON.parse(cart) : []);
-    console.log('Debug cart:', cart);
+    console.log('Debug cart from context:', cart);
+    setDebugCart(cart);
   };
 
   React.useEffect(() => {
@@ -88,68 +88,48 @@ export default function ProductDetailsPage({ params }: { params: { domain: strin
     fetchData();
   }, [params.domain, params.id]);
 
-  const addToCart = (product: any) => {
-    const cartKey = `cart_${params.domain}`;
-    const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]');
-    
-    console.log('Adding to cart:', product.id, 'quantity:', quantity);
-    console.log('Existing cart:', existingCart);
+  const addToCartHandler = (product: any) => {
+    console.log('Adding to cart via context:', product.id, 'quantity:', quantity);
     
     // Use string ID to match home page pattern
     const pid = (product?.id ?? product?._id ?? '').toString();
     
-    const existingItem = existingCart.find((item: any) => item.id === pid);
-    let updatedCart;
+    const cartItem = {
+      id: pid,
+      name: product?.name ?? product?.title ?? 'Product',
+      price: Number(product?.price ?? product?.sellingPrice ?? 0) || 0,
+      quantity: quantity,
+      image: product?.images?.[0] || product?.image || product?.imageUrl || ''
+    };
     
-    if (existingItem) {
-      updatedCart = existingCart.map((item: any) =>
-        item.id === pid ? { ...item, quantity: item.quantity + quantity } : item
-      );
-    } else {
-      updatedCart = [...existingCart, {
-        id: pid,
-        name: product?.name ?? product?.title ?? 'Product',
-        price: Number(product?.price ?? product?.sellingPrice ?? 0) || 0,
-        quantity: quantity,
-        image: product?.images?.[0] || product?.image || product?.imageUrl || ''
-      }];
-    }
+    // Add with domain parameter
+    addToCartContext(cartItem, params.domain);
     
-    localStorage.setItem(cartKey, JSON.stringify(updatedCart));
-    console.log('Cart after adding:', updatedCart);
+    // Force refresh cart display
+    setTimeout(() => refreshCart(params.domain), 100);
+    
     alert('পণ্যটি কার্টে যোগ করা হয়েছে!');
   };
 
   const buyNow = () => {
-    // Add to cart first (without alert) - same pattern as home page
-    const cartKey = `cart_${params.domain}`;
-    const existingCart = JSON.parse(localStorage.getItem(cartKey) || '[]');
-    
-    console.log('Buy Now - Adding to cart:', product.id, 'quantity:', quantity);
-    console.log('Buy Now - Existing cart:', existingCart);
+    console.log('Buy Now via context:', product.id, 'quantity:', quantity);
     
     // Use string ID to match home page pattern
     const pid = (product?.id ?? product?._id ?? '').toString();
     
-    const existingItem = existingCart.find((item: any) => item.id === pid);
-    let updatedCart;
+    const cartItem = {
+      id: pid,
+      name: product?.name ?? product?.title ?? 'Product',
+      price: Number(product?.price ?? product?.sellingPrice ?? 0) || 0,
+      quantity: quantity,
+      image: product?.images?.[0] || product?.image || product?.imageUrl || ''
+    };
     
-    if (existingItem) {
-      updatedCart = existingCart.map((item: any) =>
-        item.id === pid ? { ...item, quantity: item.quantity + quantity } : item
-      );
-    } else {
-      updatedCart = [...existingCart, {
-        id: pid,
-        name: product?.name ?? product?.title ?? 'Product',
-        price: Number(product?.price ?? product?.sellingPrice ?? 0) || 0,
-        quantity: quantity,
-        image: product?.images?.[0] || product?.image || product?.imageUrl || ''
-      }];
-    }
+    // Add with domain parameter
+    addToCartContext(cartItem, params.domain);
     
-    localStorage.setItem(cartKey, JSON.stringify(updatedCart));
-    console.log('Buy Now - Cart after adding:', updatedCart);
+    // Force refresh cart display
+    setTimeout(() => refreshCart(params.domain), 100);
     
     // Then redirect to checkout (same as home page)
     window.location.href = `/${params.domain}/checkout`;
@@ -305,7 +285,7 @@ export default function ProductDetailsPage({ params }: { params: { domain: strin
               {/* Action Buttons */}
               <div className="space-y-3">
                 <button
-                  onClick={() => addToCart(product)}
+                  onClick={() => addToCartHandler(product)}
                   disabled={product.stock === 0}
                   className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center space-x-2 transition-colors"
                 >

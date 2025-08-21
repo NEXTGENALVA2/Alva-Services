@@ -271,7 +271,7 @@ export default function Page({ params }: { params: { domain: string } }) {
   const [website, setWebsite] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const { cart, setCart, updateQuantity, removeFromCart } = useCart();
+  const { cart, setCart, updateQuantity, removeFromCart, addToCart: addToCartContext } = useCart();
   const [showCart, setShowCart] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
@@ -290,23 +290,6 @@ export default function Page({ params }: { params: { domain: string } }) {
     // Load saved language
     const savedLang = localStorage.getItem('websiteLang') || 'bn';
     setCurrentLang(savedLang);
-    
-    // Always load cart from localStorage first (synchronous)
-    const savedCart = localStorage.getItem(`cart_${params.domain}`);
-    console.debug('[cart] load from localStorage key=', `cart_${params.domain}`, 'raw=', savedCart);
-    if (savedCart) {
-      try {
-        const parsedCart = JSON.parse(savedCart);
-        console.debug('[cart] parsed on load', parsedCart);
-        setCart(parsedCart);
-      } catch (error) {
-        console.error('Error parsing cart:', error);
-        setCart([]);
-      }
-    } else {
-      console.debug('[cart] no saved cart found, initializing empty');
-      setCart([]);
-    }
     
     // ওয়েবসাইট ও প্রোডাক্ট ডাটা fetch করবে (asynchronous)
     const fetchWebsiteData = async () => {
@@ -342,47 +325,25 @@ export default function Page({ params }: { params: { domain: string } }) {
     fetchWebsiteData();
   }, [params.domain]);
 
-// Save cart to localStorage whenever it changes (debounced)
-useEffect(() => {
-  if (cart && Array.isArray(cart)) {
-    try {
-      const raw = JSON.stringify(cart);
-      console.debug('[cart] saving to localStorage key=', `cart_${params.domain}`, 'value=', raw);
-      localStorage.setItem(`cart_${params.domain}`, raw);
-    } catch (error) {
-      console.error('Error saving cart:', error);
+  // Context-based cart functions
+  const addToCart = (product: any) => {
+    const pid = (product?.id ?? product?._id ?? '').toString();
+    if (!pid) {
+      console.warn('[cart] addToCart skipped: missing product id', product);
+      return;
     }
-  }
-}, [cart, params.domain]);
-
-const addToCart = (product: any) => {
-  const pid = (product?.id ?? product?._id ?? '').toString();
-  if (!pid) {
-    console.warn('[cart] addToCart skipped: missing product id', product);
-    return;
-  }
-  console.debug('[cart] addToCart', pid);
-  setCart(prevCart => {
-    const existingItem = prevCart.find(item => item.id === pid);
-    if (existingItem) {
-      return prevCart.map(item =>
-        item.id === pid ? { ...item, quantity: item.quantity + 1 } : item
-      );
-    } else {
-      return [
-        ...prevCart,
-        {
-          id: pid,
-          name: product?.name ?? product?.title ?? 'Product',
-          price: Number(product?.price ?? product?.sellingPrice ?? 0) || 0,
-          quantity: 1,
-          image: product?.images?.[0] || product?.image || product?.imageUrl || ''
-        }
-      ];
-    }
-  });
-};
-
+    
+    const cartItem = {
+      id: pid,
+      name: product?.name ?? product?.title ?? 'Product',
+      price: Number(product?.price ?? product?.sellingPrice ?? 0) || 0,
+      quantity: 1,
+      image: product?.images?.[0] || product?.image || product?.imageUrl || ''
+    };
+    
+    console.debug('[cart] addToCart via context', pid);
+    addToCartContext(cartItem, params.domain);
+  };
 
 const getTotalPrice = () => {
   return cart.reduce((total, item) => total + item.price * item.quantity, 0);
@@ -617,7 +578,10 @@ const getTotalPrice = () => {
               >
                 <ShoppingCart className="h-6 w-6" />
                 {cart.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  <span 
+                    className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center"
+                    data-cart-count
+                  >
                     {cart.reduce((sum, item) => sum + item.quantity, 0)}
                   </span>
                 )}
