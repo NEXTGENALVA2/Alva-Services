@@ -30,15 +30,6 @@ export default function Topbar({ setSidebarOpen }: TopbarProps) {
   return (
     <header className="w-full h-16 bg-white border-b flex items-center px-6 justify-between">
   <div className="flex items-center gap-4">
-        {/* Cart icon with count */}
-        <div className="relative">
-          <ShoppingCart className="w-6 h-6 text-gray-700" />
-          {mounted && cart.length > 0 && (
-            <span className="absolute -top-2 -right-2 bg-red-600 text-white rounded-full px-2 text-xs">
-              {cart.length}
-            </span>
-          )}
-        </div>
         {/* Mobile menu button */}
         <button
           onClick={() => setSidebarOpen(true)}
