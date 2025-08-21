@@ -31,16 +31,6 @@ eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpac
 
 /***/ }),
 
-/***/ "(ssr)/./node_modules/lucide-react/dist/esm/icons/arrow-left.js":
-/*!****************************************************************!*\
-  !*** ./node_modules/lucide-react/dist/esm/icons/arrow-left.js ***!
-  \****************************************************************/
-/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
-
-eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export */ __webpack_require__.d(__webpack_exports__, {\n/* harmony export */   \"default\": () => (/* binding */ ArrowLeft)\n/* harmony export */ });\n/* harmony import */ var _createLucideIcon_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../createLucideIcon.js */ \"(ssr)/./node_modules/lucide-react/dist/esm/createLucideIcon.js\");\n/**\n * lucide-react v0.292.0 - ISC\n */\n\n\n\nconst ArrowLeft = (0,_createLucideIcon_js__WEBPACK_IMPORTED_MODULE_0__[\"default\"])(\"ArrowLeft\", [\n  [\"path\", { d: \"m12 19-7-7 7-7\", key: \"1l729n\" }],\n  [\"path\", { d: \"M19 12H5\", key: \"x3x0zl\" }]\n]);\n\n\n//# sourceMappingURL=arrow-left.js.map\n//# sourceURL=[module]\n//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiKHNzcikvLi9ub2RlX21vZHVsZXMvbHVjaWRlLXJlYWN0L2Rpc3QvZXNtL2ljb25zL2Fycm93LWxlZnQuanMiLCJtYXBwaW5ncyI6Ijs7Ozs7QUFBQTtBQUNBO0FBQ0E7O0FBRXNEOztBQUV0RCxrQkFBa0IsZ0VBQWdCO0FBQ2xDLGFBQWEsb0NBQW9DO0FBQ2pELGFBQWEsOEJBQThCO0FBQzNDOztBQUVnQztBQUNoQyIsInNvdXJjZXMiOlsid2VicGFjazovL2Vjb21tZXJjZS1mcm9udGVuZC8uL25vZGVfbW9kdWxlcy9sdWNpZGUtcmVhY3QvZGlzdC9lc20vaWNvbnMvYXJyb3ctbGVmdC5qcz9mZTk2Il0sInNvdXJjZXNDb250ZW50IjpbIi8qKlxuICogbHVjaWRlLXJlYWN0IHYwLjI5Mi4wIC0gSVNDXG4gKi9cblxuaW1wb3J0IGNyZWF0ZUx1Y2lkZUljb24gZnJvbSAnLi4vY3JlYXRlTHVjaWRlSWNvbi5qcyc7XG5cbmNvbnN0IEFycm93TGVmdCA9IGNyZWF0ZUx1Y2lkZUljb24oXCJBcnJvd0xlZnRcIiwgW1xuICBbXCJwYXRoXCIsIHsgZDogXCJtMTIgMTktNy03IDctN1wiLCBrZXk6IFwiMWw3MjluXCIgfV0sXG4gIFtcInBhdGhcIiwgeyBkOiBcIk0xOSAxMkg1XCIsIGtleTogXCJ4M3gwemxcIiB9XVxuXSk7XG5cbmV4cG9ydCB7IEFycm93TGVmdCBhcyBkZWZhdWx0IH07XG4vLyMgc291cmNlTWFwcGluZ1VSTD1hcnJvdy1sZWZ0LmpzLm1hcFxuIl0sIm5hbWVzIjpbXSwic291cmNlUm9vdCI6IiJ9\n//# sourceURL=webpack-internal:///(ssr)/./node_modules/lucide-react/dist/esm/icons/arrow-left.js\n");
-
-/***/ }),
-
 /***/ "(ssr)/./node_modules/lucide-react/dist/esm/icons/bar-chart-3.js":
 /*!*****************************************************************!*\
   !*** ./node_modules/lucide-react/dist/esm/icons/bar-chart-3.js ***!
