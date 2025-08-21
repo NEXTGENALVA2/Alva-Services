@@ -42,7 +42,7 @@ export default function CustomizationPage() {
     insideDhaka: 60,
     outsideDhaka: 120,
     freeDeliveryMinimum: 1000,
-    expressDelivery: 150
+    express: 150
   });
 
 
@@ -296,7 +296,7 @@ export default function CustomizationPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Inside Dhaka */}
             <div>
-              <label className="block font-medium mb-2">ঢাকার ভিতরে ডেলিভারি চার্জ (৳)</label>
+              <label className="block font-medium mb-2">ঢাকা বিভাগ → ঢাকা জেলা ডেলিভারি চার্জ (৳)</label>
               <input
                 type="number"
                 min={0}
@@ -312,7 +312,7 @@ export default function CustomizationPage() {
 
             {/* Outside Dhaka */}
             <div>
-              <label className="block font-medium mb-2">ঢাকার বাইরে ডেলিভারি চার্জ (৳)</label>
+              <label className="block font-medium mb-2">ঢাকা বিভাগের অন্য জেলা + অন্যান্য বিভাগ (৳)</label>
               <input
                 type="number"
                 min={0}
@@ -344,17 +344,17 @@ export default function CustomizationPage() {
 
             {/* Express Delivery */}
             <div>
-              <label className="block font-medium mb-2">এক্সপ্রেস ডেলিভারি চার্জ (৳)</label>
+              <label className="block font-medium mb-2">এক্সপ্রেস ডেলিভারি (সব অঞ্চল) (৳)</label>
               <input
                 type="number"
                 min={0}
-                value={deliveryCharge.expressDelivery}
+                value={deliveryCharge.express}
                 onChange={e => setDeliveryCharge(prev => ({
                   ...prev,
-                  expressDelivery: Number(e.target.value)
+                  express: Number(e.target.value)
                 }))}
                 className="border rounded px-3 py-2 w-full"
-                placeholder="যেমন: ১৫০ (খালি রাখলে এক্সপ্রেস নেই)"
+                placeholder="যেমন: ১৫০"
               />
             </div>
           </div>
@@ -363,13 +363,13 @@ export default function CustomizationPage() {
           <div className="mt-4 p-3 bg-blue-50 rounded border">
             <h4 className="font-medium mb-2">ডেলিভারি তথ্য প্রিভিউ:</h4>
             <div className="text-sm space-y-1">
-              <div>• ঢাকার ভিতরে: ৳{deliveryCharge.insideDhaka}</div>
-              <div>• ঢাকার বাইরে: ৳{deliveryCharge.outsideDhaka}</div>
+              <div>• ঢাকা বিভাগ → ঢাকা জেলা: ৳{deliveryCharge.insideDhaka}</div>
+              <div>• ঢাকা বিভাগের অন্য জেলা + অন্যান্য বিভাগ: ৳{deliveryCharge.outsideDhaka}</div>
               {deliveryCharge.freeDeliveryMinimum > 0 && (
                 <div>• ৳{deliveryCharge.freeDeliveryMinimum}+ অর্ডারে ফ্রি ডেলিভারি</div>
               )}
-              {deliveryCharge.expressDelivery > 0 && (
-                <div>• এক্সপ্রেস ডেলিভারি: ৳{deliveryCharge.expressDelivery}</div>
+              {deliveryCharge.express > 0 && (
+                <div>• এক্সপ্রেস ডেলিভারি (সব অঞ্চল): ৳{deliveryCharge.express}</div>
               )}
             </div>
           </div>

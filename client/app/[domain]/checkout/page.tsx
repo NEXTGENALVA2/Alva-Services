@@ -44,9 +44,23 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
     const savedDeliveryCharge = localStorage.getItem('deliveryCharge');
     if (savedDeliveryCharge) {
       try {
-        setDeliveryCharge(JSON.parse(savedDeliveryCharge));
+        const parsed = JSON.parse(savedDeliveryCharge);
+        // Ensure all required fields exist with fallback values
+        setDeliveryCharge({
+          insideDhaka: parsed.insideDhaka || 60,
+          outsideDhaka: parsed.outsideDhaka || 120,
+          freeDeliveryMinimum: parsed.freeDeliveryMinimum || 1000,
+          expressDelivery: parsed.expressDelivery || 150
+        });
       } catch (e) {
         console.error('Error parsing delivery charge:', e);
+        // Set default values if parsing fails
+        setDeliveryCharge({
+          insideDhaka: 60,
+          outsideDhaka: 120,
+          freeDeliveryMinimum: 1000,
+          expressDelivery: 150
+        });
       }
     }
   }, [domain]);
@@ -86,17 +100,43 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
   const calculateDeliveryCharge = () => {
     const total = getTotal();
     
+    console.log('DEBUG Delivery Calculation:', {
+      total,
+      division: form.division,
+      district: form.district,
+      deliveryCharge,
+      selectedDeliveryType
+    });
+    
+    // If division not selected, return default inside Dhaka charge
+    if (!form.division) {
+      console.log('No division selected, using inside Dhaka charge:', deliveryCharge.insideDhaka);
+      return deliveryCharge.insideDhaka;
+    }
+    
     // Free delivery check
     if (deliveryCharge.freeDeliveryMinimum > 0 && total >= deliveryCharge.freeDeliveryMinimum) {
+      console.log('Free delivery applied');
       return 0;
     }
     
-    // Base delivery charge
-    let baseCharge = form.division === "Dhaka" ? deliveryCharge.insideDhaka : deliveryCharge.outsideDhaka;
+    // Base delivery charge calculation
+    let baseCharge;
+    
+    // Only Dhaka Division AND Dhaka District gets inside Dhaka rate
+    if (form.division === "Dhaka" && form.district === "Dhaka") {
+      baseCharge = deliveryCharge.insideDhaka;
+      console.log('Dhaka Division + Dhaka District, using inside Dhaka charge:', baseCharge);
+    } else {
+      // All other divisions and districts get outside Dhaka rate
+      baseCharge = deliveryCharge.outsideDhaka;
+      console.log('Other division/district, using outside Dhaka charge:', baseCharge);
+    }
     
     // Express delivery additional charge
     if (selectedDeliveryType === 'express' && deliveryCharge.expressDelivery > 0) {
       baseCharge += deliveryCharge.expressDelivery;
+      console.log('Express delivery added, final charge:', baseCharge);
     }
     
     return baseCharge;
@@ -104,6 +144,9 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
   
   const finalDeliveryCharge = calculateDeliveryCharge();
   const vat = 0;
+  
+  // Debug the final delivery charge
+  console.log('Final delivery charge:', finalDeliveryCharge);
 
   // Confirm order
   const handleOrder = async (e: React.FormEvent) => {
@@ -260,8 +303,9 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
             <div className="bg-blue-50 p-3 rounded text-sm">
               <h4 className="font-medium mb-1">ডেলিভারি তথ্য:</h4>
               <div className="space-y-1">
-                <div>• ঢাকার ভিতরে: ৳{deliveryCharge.insideDhaka}</div>
-                <div>• ঢাকার বাইরে: ৳{deliveryCharge.outsideDhaka}</div>
+                <div>• ঢাকা বিভাগ → ঢাকা জেলা: ৳{deliveryCharge.insideDhaka}</div>
+                <div>• ঢাকা বিভাগের অন্য জেলা: ৳{deliveryCharge.outsideDhaka}</div>
+                <div>• অন্যান্য বিভাগ: ৳{deliveryCharge.outsideDhaka}</div>
                 {deliveryCharge.freeDeliveryMinimum > 0 && (
                   <div>• ৳{deliveryCharge.freeDeliveryMinimum}+ অর্ডারে ফ্রি ডেলিভারি</div>
                 )}
