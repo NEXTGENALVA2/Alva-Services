@@ -1,4 +1,4 @@
-// File: C:\Users\mdemo\OneDrive\Desktop\Alva Projects\client\app\layout.tsx
+// File: C:\Users\User\Desktop\Alva Services\AlvaServices\Alva-Services\client\app\layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

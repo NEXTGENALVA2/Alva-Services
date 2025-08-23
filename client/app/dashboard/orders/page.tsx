@@ -107,6 +107,18 @@ interface Order {
     image?: string;
     productName?: string;
     productImage?: string;
+    images?: string[];
+  }>;
+  OrderItems?: Array<{
+    Product: {
+      name: string;
+      price: number;
+      quantity?: number;
+      images?: string[];
+      // add other product fields as needed
+    };
+    quantity?: number;
+    // add other order item fields as needed
   }>;
 }
 
@@ -219,6 +231,10 @@ export default function OrdersPage() {
       </div>
     );
   }
+
+
+  console.log("DFASDFADS ASD FDASFASD FASDF A", selectedOrder );
+
 
   return (
     <div className="space-y-6">
@@ -380,18 +396,24 @@ export default function OrdersPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {(selectedOrder.items && Array.isArray(selectedOrder.items) && selectedOrder.items.length > 0) ? (
-                        selectedOrder.items.map((item, index) => (
+                      {(selectedOrder.OrderItems && Array.isArray(selectedOrder.OrderItems) && selectedOrder.OrderItems.length > 0) ? (
+                        selectedOrder.OrderItems.map((item, index) => (
                           <tr key={index}>
                             <td className="px-4 py-2">
-                              {(item.productImage || item.image) && (
-                                <img src={item.productImage || item.image} alt={item.productName || item.name} className="h-16 w-16 rounded" />
+                              {item.Product.images && item.Product.images.length > 0 ? (
+                                <img
+                                  src={item.Product.images[0]}
+                                  alt={item.Product.name}
+                                  className="h-16 w-16 rounded"
+                                />
+                              ) : (
+                                <span className="text-gray-400">No image</span>
                               )}
                             </td>
-                            <td className="px-4 py-2">{item.productName || item.name}</td>
-                            <td className="px-4 py-2">৳{item.price}</td>
-                            <td className="px-4 py-2">{item.quantity}</td>
-                            <td className="px-4 py-2">৳{item.price * item.quantity}</td>
+                            <td className="px-4 py-2">{item.Product.name}</td>
+                            <td className="px-4 py-2">৳{item.Product.price}</td>
+                            <td className="px-4 py-2">{item.Product.quantity || item.quantity}</td>
+                            <td className="px-4 py-2">৳{item.Product.price * (item.Product.quantity || item.quantity || 1)}</td>
                           </tr>
                         ))
                       ) : (
