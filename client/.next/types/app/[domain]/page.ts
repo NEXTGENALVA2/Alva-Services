@@ -1,4 +1,4 @@
-// File: C:\Users\User\Desktop\Alva Services\AlvaServices\Alva-Services\client\app\[domain]\page.tsx
+// File: C:\Users\mdemo\Alva-Services\client\app\[domain]\page.tsx
 import * as entry from '../../../../app/[domain]/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

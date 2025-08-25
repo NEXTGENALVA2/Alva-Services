@@ -88,6 +88,7 @@ const Order = sequelize.define('Order', {
   subTotal: DataTypes.DECIMAL(10, 2),
   deliveryCharge: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
   deliveryType: { type: DataTypes.ENUM('normal', 'express'), defaultValue: 'normal' },
+  advancePayment: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
   note: DataTypes.TEXT,
   status: { type: DataTypes.ENUM('pending', 'confirmed', 'shipped', 'delivered', 'cancelled'), defaultValue: 'pending' },
   paymentStatus: { type: DataTypes.ENUM('pending', 'paid', 'failed'), defaultValue: 'pending' },
