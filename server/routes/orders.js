@@ -172,7 +172,13 @@ router.post('/', async (req, res) => {
 router.put('/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { 
+      status, 
+      customerDivision, 
+      customerDistrict, 
+      advancePayment, 
+      deliveryCharge 
+    } = req.body;
 
     const website = await Website.findOne({ where: { userId: req.user.id } });
     if (!website) {
@@ -187,7 +193,15 @@ router.put('/:id', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    await order.update({ status });
+    // Update only the fields that are provided
+    const updateData = {};
+    if (status !== undefined) updateData.status = status;
+    if (customerDivision !== undefined) updateData.customerDivision = customerDivision;
+    if (customerDistrict !== undefined) updateData.customerDistrict = customerDistrict;
+    if (advancePayment !== undefined) updateData.advancePayment = advancePayment;
+    if (deliveryCharge !== undefined) updateData.deliveryCharge = deliveryCharge;
+
+    await order.update(updateData);
 
     res.json({ message: 'Order updated successfully', order });
   } catch (error) {
