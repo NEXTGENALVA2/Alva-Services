@@ -14,6 +14,9 @@ export default function ProductsPage() {
   const [activeFilter, setActiveFilter] = useState('all');
 
   const [products, setProducts] = useState<Product[]>([]);
+  // Import product link state
+  const [importLink, setImportLink] = useState("");
+  const [importLoading, setImportLoading] = useState(false);
   useEffect(() => {
     setMounted(true);
     // ডাটাবেস থেকে প্রোডাক্ট লোড করুন
@@ -148,13 +151,87 @@ export default function ProductsPage() {
               <h1 className="text-2xl font-bold text-gray-900">All Products</h1>
               <p className="text-gray-600 mt-1">Manage your product inventory</p>
             </div>
-            <button
-              className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
-              onClick={() => setShowAdd(true)}
-            >
-              <Plus className="h-4 w-4" />
-              Add Product
-            </button>
+            <div className="flex flex-col gap-2">
+              <button
+                className="inline-flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                onClick={() => setShowAdd(true)}
+              >
+                <Plus className="h-4 w-4" />
+                Add Product
+              </button>
+              {/* Import product by link */}
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="text"
+                  className="input input-bordered w-64"
+                  placeholder="Product link paste korun..."
+                  value={importLink}
+                  onChange={e => setImportLink(e.target.value)}
+                  disabled={importLoading}
+                />
+                <button
+                  className="btn btn-secondary"
+                  onClick={async () => {
+                    if (!importLink) return;
+                    setImportLoading(true);
+                    try {
+                      const res = await fetch("/api/import-product", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ url: importLink })
+                      });
+                      const data = await res.json();
+                      if (data.success) {
+                        // Import successful - now add the product to database
+                        const productData = data.product;
+                        
+                        // Call the existing handleAddProduct function with imported data
+                        await handleAddProduct({
+                          name: productData.name,
+                          description: productData.description, // Full description from original site
+                          shortDesc: productData.shortDescription, // SEO description
+                          price: productData.price,
+                          stock: productData.stock,
+                          images: productData.image ? [productData.image] : [],
+                          category: productData.category,
+                          sku: productData.sku,
+                          brand: productData.brand || 'Imported Brand',
+                          condition: productData.condition || 'New',
+                          status: productData.status || 'Active'
+                        });
+                        
+                        alert("প্রোডাক্ট সফলভাবে ইম্পোর্ট ও সেভ হয়েছে!");
+                        setImportLink("");
+                        
+                        // Reload products list
+                        const token = localStorage.getItem('token');
+                        const res = await fetch('http://localhost:5000/api/products', {
+                          headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (res.ok) {
+                          const newProducts = await res.json();
+                          setProducts(newProducts);
+                        }
+                      } else {
+                        alert("ইম্পোর্ট ব্যর্থ: " + (data.message || "Unknown error"));
+                      }
+                    } catch (err) {
+                      let msg = "";
+                      if (typeof err === "object" && err && "message" in err) {
+                        msg = (err as any).message;
+                      } else {
+                        msg = String(err);
+                      }
+                      alert("ইম্পোর্ট ব্যর্থ: " + msg);
+                    }
+                    setImportLoading(false);
+                  }}
+                  disabled={!importLink || importLoading}
+                >
+                  {importLoading ? "লোড হচ্ছে..." : "Import Product"}
+                </button>
+              </div>
+            </div>
           </div>
 
           {/* Filter Tabs */}

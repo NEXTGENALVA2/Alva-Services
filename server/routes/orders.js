@@ -89,6 +89,8 @@ router.put('/:id/status', authMiddleware, async (req, res) => {
 // Create order (public API for website customers)
 router.post('/', async (req, res) => {
   try {
+    console.log('Order creation request body:', JSON.stringify(req.body, null, 2));
+    
     const { 
       customerName, 
       customerPhone, 
@@ -106,17 +108,34 @@ router.post('/', async (req, res) => {
       note
     } = req.body;
 
+    console.log('Extracted websiteId:', websiteId);
+
     // Validate required fields
     if (!customerName || !customerPhone || !customerAddress || !items || !totalAmount || !websiteId) {
+      console.log('Missing required fields. CustomerName:', !!customerName, 'CustomerPhone:', !!customerPhone, 'CustomerAddress:', !!customerAddress, 'Items:', !!items, 'TotalAmount:', !!totalAmount, 'WebsiteId:', !!websiteId);
       return res.status(400).json({ 
         message: 'Required fields: customerName, customerPhone, customerAddress, items, totalAmount, websiteId' 
       });
     }
 
-    // Verify website exists
-    const website = await Website.findByPk(websiteId);
+    // Verify website exists or create if needed
+    let website = await Website.findByPk(websiteId);
     if (!website) {
-      return res.status(404).json({ message: 'Website not found' });
+      // Auto-create website entry for fallback websiteId
+      console.log('Creating fallback website entry for websiteId:', websiteId);
+      try {
+        website = await Website.create({
+          id: websiteId,
+          name: `Auto Website - ${req.body.domain || 'Unknown'}`,
+          domain: req.body.domain || 'unknown-domain',
+          userId: null, // Auto-generated websites don't have a specific user
+          settings: {}
+        });
+        console.log('Successfully created fallback website:', website.id);
+      } catch (err) {
+        console.error('Failed to create website entry:', err);
+        return res.status(400).json({ message: 'Invalid websiteId format or creation failed' });
+      }
     }
 
     // Create order with delivery information

@@ -2,7 +2,12 @@
 
 export async function getDomain() {
   try {
-    const res = await fetch('http://localhost:5000/api/domain');
+    const token = localStorage.getItem('token');
+    const res = await fetch('http://localhost:5000/api/domain', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     const data = await res.json();
     return {
       domain: data.domain || '',
@@ -17,9 +22,13 @@ export async function getDomain() {
 export async function saveDomain(domain: string) {
   try {
     console.log('Saving domain:', domain); // Debug log
+    const token = localStorage.getItem('token');
     const res = await fetch('http://localhost:5000/api/domain', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
       body: JSON.stringify({ domain }),
     });
     const data = await res.json();

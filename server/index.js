@@ -37,9 +37,9 @@ app.use('/uploads/banners', express.static(path.join(__dirname, 'uploads/banners
 
 // Database connection
 sequelize.authenticate()
-  .then(() => {
+  .then(async () => {
     console.log('Database connected successfully.');
-    return sequelize.sync(); // Normal sync - data will persist
+    await sequelize.sync();
   })
   .then(() => {
     console.log('Database synchronized.');
