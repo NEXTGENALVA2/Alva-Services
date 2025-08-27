@@ -3,6 +3,7 @@ import { ShoppingCart } from 'lucide-react';
 import { useCart } from './CartContext';
 import { Menu } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { getDomain } from '../lib/domain';
 
 const LanguageCurrencySwitcher = dynamic(() => import('../app/components/LanguageCurrencySwitcher'), { ssr: false });
 
@@ -17,14 +18,31 @@ export default function Topbar({ setSidebarOpen }: TopbarProps) {
 
   useEffect(() => {
     setMounted(true);
-    // Get website info from localStorage (set by dashboard page)
-    try {
-      const website = JSON.parse(localStorage.getItem('website') || 'null');
-      const websiteDomain = website?.domain;
-      if (websiteDomain) {
-  setWebsiteUrl(`http://localhost:3000/${websiteDomain}`);
+    
+    // Get domain from domain settings first
+    getDomain().then(domainData => {
+      if (domainData.url) {
+        setWebsiteUrl(domainData.url);
+      } else {
+        // Fallback to localStorage
+        try {
+          const website = JSON.parse(localStorage.getItem('website') || 'null');
+          const websiteDomain = website?.domain;
+          if (websiteDomain) {
+            setWebsiteUrl(`http://localhost:3000/${websiteDomain}`);
+          }
+        } catch {}
       }
-    } catch {}
+    }).catch(() => {
+      // Fallback to localStorage if domain fetch fails
+      try {
+        const website = JSON.parse(localStorage.getItem('website') || 'null');
+        const websiteDomain = website?.domain;
+        if (websiteDomain) {
+          setWebsiteUrl(`http://localhost:3000/${websiteDomain}`);
+        }
+      } catch {}
+    });
   }, []);
 
   return (
