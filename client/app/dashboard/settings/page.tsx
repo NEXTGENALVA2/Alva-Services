@@ -37,7 +37,9 @@ export default function DashboardSettingsPage() {
       // Backend theke latest domain abar fetch kore UI update korchi
       const latest = await getDomain();
       setDomainData(latest);
-      alert(`ডোমেইন সংরক্ষণ হয়েছে! আপনার নতুন URL: ${res.url}`);
+  // Notify all components (like Topbar) to update domain
+  window.dispatchEvent(new Event('domainUpdated'));
+  alert(`ডোমেইন সংরক্ষণ হয়েছে! আপনার নতুন URL: ${res.url}`);
       
       // Auto redirect remove korchi - user manually click korle jabe
     } else {
