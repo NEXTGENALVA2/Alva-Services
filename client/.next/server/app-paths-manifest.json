@@ -1,10 +1,10 @@
 {
-  "/not-found": "app/not-found.js",
-  "/auth/login/page": "app/auth/login/page.js",
   "/[domain]/page": "app/[domain]/page.js",
+  "/[domain]/checkout/page": "app/[domain]/checkout/page.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/auth/register/page": "app/auth/register/page.js",
   "/dashboard/page": "app/dashboard/page.js",
   "/dashboard/settings/page": "app/dashboard/settings/page.js",
-  "/dashboard/customization/page": "app/dashboard/customization/page.js",
-  "/dashboard/products/page": "app/dashboard/products/page.js",
-  "/dashboard/orders/page": "app/dashboard/orders/page.js"
+  "/dashboard/orders/page": "app/dashboard/orders/page.js",
+  "/dashboard/products/page": "app/dashboard/products/page.js"
 }

@@ -23,7 +23,7 @@ const Website = sequelize.define('Website', {
   logo: DataTypes.STRING,
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
   settings: { type: DataTypes.JSONB, defaultValue: {} },
-  userId: { type: DataTypes.UUID, allowNull: false, references: { model: 'Users', key: 'id' } },
+  userId: { type: DataTypes.UUID, allowNull: true, references: { model: 'Users', key: 'id' } }, // Allow null for auto-generated websites
 });
 
 // Product model
@@ -120,7 +120,7 @@ const Subscription = sequelize.define('Subscription', {
 });
 
 // Define associations
-User.hasOne(Website, { foreignKey: 'userId' });
+User.hasMany(Website, { foreignKey: 'userId' });
 Website.belongsTo(User, { foreignKey: 'userId' });
 
 Website.hasMany(Product, { foreignKey: 'websiteId' });
