@@ -4,6 +4,23 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
+// Update website domain
+router.put('/:websiteId/domain', authMiddleware, async (req, res) => {
+  try {
+    const { websiteId } = req.params;
+    const { domain } = req.body;
+    const website = await require('../models').Website.findByPk(websiteId);
+    if (!website) {
+      return res.status(404).json({ message: 'Website not found' });
+    }
+    website.domain = domain;
+    await website.save();
+    res.json({ message: 'Domain updated!', domain: website.domain });
+  } catch (error) {
+    res.status(500).json({ message: 'Domain update failed', error: error.message });
+  }
+});
+
 // Update website theme
 router.put('/:websiteId/theme', authMiddleware, async (req, res) => {
   try {
@@ -55,13 +72,30 @@ router.get('/public/:domain', async (req, res) => {
   try {
     console.log('DEBUG: Fetching website for domain:', req.params.domain);
     
-    const website = await Website.findOne({
+    // Extract the ID from domain (e.g., "ratulhasan-1756107896786" -> "1756107896786")
+    const domainParts = req.params.domain.split('-');
+    const websiteId = domainParts[domainParts.length - 1]; // Get last part as ID
+    
+    // First try to find by exact domain match
+    let website = await Website.findOne({
       where: { domain: req.params.domain },
       include: [
         { model: require('../models').Product, as: 'products' },
         { model: Banner, where: { isActive: true }, required: false, order: [['order', 'ASC']] }
       ]
     });
+    
+    // If not found, try to find by original domain (emon-1756107896786)
+    if (!website) {
+      console.log('DEBUG: Domain not found, trying with original domain:', `emon-${websiteId}`);
+      website = await Website.findOne({
+        where: { domain: `emon-${websiteId}` },
+        include: [
+          { model: require('../models').Product, as: 'products' },
+          { model: Banner, where: { isActive: true }, required: false, order: [['order', 'ASC']] }
+        ]
+      });
+    }
     
     if (!website) {
       console.log('DEBUG: Website not found for domain:', req.params.domain);
