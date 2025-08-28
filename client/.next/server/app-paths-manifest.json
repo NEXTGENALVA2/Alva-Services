@@ -1,1 +1,5 @@
-{}
+{
+  "/not-found": "app/not-found.js",
+  "/[domain]/page": "app/[domain]/page.js",
+  "/dashboard/products/page": "app/dashboard/products/page.js"
+}

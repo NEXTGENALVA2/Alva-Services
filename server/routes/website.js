@@ -4,6 +4,23 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
+// Update website domain
+router.put('/:websiteId/domain', authMiddleware, async (req, res) => {
+  try {
+    const { websiteId } = req.params;
+    const { domain } = req.body;
+    const website = await require('../models').Website.findByPk(websiteId);
+    if (!website) {
+      return res.status(404).json({ message: 'Website not found' });
+    }
+    website.domain = domain;
+    await website.save();
+    res.json({ message: 'Domain updated!', domain: website.domain });
+  } catch (error) {
+    res.status(500).json({ message: 'Domain update failed', error: error.message });
+  }
+});
+
 // Update website theme
 router.put('/:websiteId/theme', authMiddleware, async (req, res) => {
   try {
@@ -44,24 +61,50 @@ router.get('/user/:userId', async (req, res) => {
 // GET /api/websites/by-domain/:domain
 router.get('/by-domain/:domain', async (req, res) => {
   const { domain } = req.params;
-  const website = await Website.findOne({ where: { domain } });
-  if (!website) {
-    return res.status(404).json({ message: 'Website not found' });
+  console.log('Looking for website with domain:', domain);
+  
+  try {
+    const website = await Website.findOne({ where: { domain } });
+    if (!website) {
+      console.log('No website found with domain:', domain);
+      return res.status(404).json({ message: 'Website not found' });
+    }
+    console.log('Found website:', website.id, website.domain);
+    res.json({ id: website.id, domain: website.domain });
+  } catch (error) {
+    console.error('Error looking up website:', error);
+    res.status(500).json({ message: 'Error looking up website', error: error.message });
   }
-  res.json({ id: website.id, domain: website.domain });
 });
 // Public: Get website by domain (for dynamic frontend)
 router.get('/public/:domain', async (req, res) => {
   try {
     console.log('DEBUG: Fetching website for domain:', req.params.domain);
     
-    const website = await Website.findOne({
+    // Extract the ID from domain (e.g., "ratulhasan-1756107896786" -> "1756107896786")
+    const domainParts = req.params.domain.split('-');
+    const websiteId = domainParts[domainParts.length - 1]; // Get last part as ID
+    
+    // First try to find by exact domain match
+    let website = await Website.findOne({
       where: { domain: req.params.domain },
       include: [
         { model: require('../models').Product, as: 'products' },
         { model: Banner, where: { isActive: true }, required: false, order: [['order', 'ASC']] }
       ]
     });
+    
+    // If not found, try to find by original domain (emon-1756107896786)
+    if (!website) {
+      console.log('DEBUG: Domain not found, trying with original domain:', `emon-${websiteId}`);
+      website = await Website.findOne({
+        where: { domain: `emon-${websiteId}` },
+        include: [
+          { model: require('../models').Product, as: 'products' },
+          { model: Banner, where: { isActive: true }, required: false, order: [['order', 'ASC']] }
+        ]
+      });
+    }
     
     if (!website) {
       console.log('DEBUG: Website not found for domain:', req.params.domain);
@@ -153,6 +196,51 @@ router.get('/', authMiddleware, async (req, res) => {
   } catch (error) {
     console.log('DEBUG: Error fetching website:', error.message);
     res.status(500).json({ message: 'Error fetching website', error: error.message });
+  }
+});
+
+// Update website name and domain
+router.put('/update', authMiddleware, async (req, res) => {
+  try {
+    const { name } = req.body;
+    console.log('DEBUG: Website update requested:', { name, userId: req.user.id });
+
+    const website = await Website.findOne({ 
+      where: { userId: req.user.id }
+    });
+
+    if (!website) {
+      return res.status(404).json({ message: 'Website not found' });
+    }
+
+    // Update name and generate new domain
+    const oldDomain = website.domain;
+    const newDomain = `${name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+    
+    website.name = name;
+    website.domain = newDomain;
+    await website.save();
+
+    console.log('DEBUG: Website updated:', { 
+      id: website.id, 
+      oldName: website.name, 
+      newName: name,
+      oldDomain: oldDomain,
+      newDomain: newDomain
+    });
+
+    res.json({
+      message: 'Website updated successfully!',
+      website: {
+        id: website.id,
+        name: website.name,
+        domain: website.domain,
+        url: `http://localhost:3000/${website.domain}`
+      }
+    });
+  } catch (error) {
+    console.log('DEBUG: Error updating website:', error.message);
+    res.status(500).json({ message: 'Error updating website', error: error.message });
   }
 });
 

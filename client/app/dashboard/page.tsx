@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
 import axios from 'axios'
+import { getDomain } from '../../lib/domain'
 
 // Define Analytics interface
 interface Analytics {
@@ -52,6 +53,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState<boolean>(true)
   const [website, setWebsite] = useState<any>(null)
   const [mounted, setMounted] = useState(false);
+  const [domainData, setDomainData] = useState<any>({});
 
   const [products, setProducts] = useState<any[]>([]);
 
@@ -60,7 +62,17 @@ export default function Dashboard() {
     fetchAnalytics();
     fetchWebsite();
     fetchProducts();
+    fetchDomainData();
   }, []);
+
+  const fetchDomainData = async () => {
+    try {
+      const data = await getDomain();
+      setDomainData(data);
+    } catch (error) {
+      console.error('Domain fetch error:', error);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -176,23 +188,29 @@ export default function Dashboard() {
             title={t('viewWebsite')}
             onClick={e => {
               if ((e.target as HTMLElement).tagName === 'A') return;
-              window.open(`http://localhost:3000/${website.domain}`, '_blank', 'noopener,noreferrer');
+              const displayUrl = domainData.url || `http://localhost:3000/${website.domain}`;
+              window.open(displayUrl, '_blank', 'noopener,noreferrer');
             }}
-            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') window.open(`http://localhost:3000/${website.domain}`, '_blank', 'noopener,noreferrer'); }}
+            onKeyDown={e => { 
+              if (e.key === 'Enter' || e.key === ' ') {
+                const displayUrl = domainData.url || `http://localhost:3000/${website.domain}`;
+                window.open(displayUrl, '_blank', 'noopener,noreferrer');
+              }
+            }}
           >
             <h2 className="text-lg font-bold text-green-800 mb-1">{t('yourWebsite')}</h2>
             <div className="text-green-900">{t('name')}: {website.name}</div>
-            <div className="text-green-900">{t('domain')}: {website.domain}</div>
+            <div className="text-green-900">{t('domain')}: {domainData.domain || website.domain}</div>
             <div className="text-green-900">
               URL: <a
-                href={`http://localhost:3000/${website.domain}`}
+                href={domainData.url || `http://localhost:3000/${website.domain}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline text-blue-700 cursor-pointer"
                 tabIndex={0}
                 onClick={e => e.stopPropagation()}
               >
-                {`http://localhost:3000/${website.domain}`}
+                {domainData.url || `http://localhost:3000/${website.domain}`}
               </a>
             </div>
           </div>

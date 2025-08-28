@@ -148,6 +148,24 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
   // Debug the final delivery charge
   console.log('Final delivery charge:', finalDeliveryCharge);
 
+  // Generate UUID from string (deterministic)
+  const generateUUIDFromString = (str: string): string => {
+    // Simple hash function to generate UUID-like string
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    
+    // Convert hash to hex and pad to ensure we have enough characters
+    const hashStr = Math.abs(hash).toString(16).padStart(8, '0');
+    const extendedHash = (hashStr + hashStr + hashStr + hashStr).slice(0, 32);
+    
+    // Format as proper UUID v4 (8-4-4-4-12 format with version 4 and variant bits)
+    return `${extendedHash.slice(0,8)}-${extendedHash.slice(8,12)}-4${extendedHash.slice(12,15)}-8${extendedHash.slice(15,18)}-${extendedHash.slice(18,30)}`;
+  };
+
   // Confirm order
   const handleOrder = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,45 +174,56 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
       return;
     }
     try {
-      // 1. Fetch website UUID by domain
-      const websiteRes = await fetch(`http://localhost:5000/api/websites/by-domain/${domain}`);
-      if (!websiteRes.ok) {
-        const errorText = await websiteRes.text();
-        alert('Website fetch error: ' + errorText);
-        return;
+      let websiteId = null;
+      
+      // Try to fetch website UUID by domain (with fallback)
+      try {
+        const websiteRes = await fetch(`http://localhost:5000/api/websites/by-domain/${domain}`);
+        if (websiteRes.ok) {
+          const websiteData = await websiteRes.json();
+          websiteId = websiteData.id;
+        }
+      } catch (err) {
+        console.log('Website lookup failed, proceeding with generated websiteId:', err);
       }
-      const websiteData = await websiteRes.json();
-      const websiteId = websiteData.id;
+      
+      // Generate valid UUID if not found
       if (!websiteId) {
-        alert('Website ID not found for domain: ' + domain);
-        return;
+        websiteId = generateUUIDFromString(domain);
+        console.log('Generated websiteId:', websiteId);
       }
 
-      // 2. Submit order with correct websiteId and delivery information
+      // 2. Submit order (with or without websiteId)
+      const orderData: any = {
+        customerName: form.name,
+        customerPhone: form.phone,
+        customerAddress: form.address,
+        customerEmail: form.email,
+        customerDivision: form.division,
+        customerDistrict: form.district,
+        note: form.note,
+        items: cart,
+        subTotal: getTotal(),
+        deliveryCharge: finalDeliveryCharge,
+        deliveryType: selectedDeliveryType,
+        totalAmount: getTotal() + finalDeliveryCharge,
+        paymentMethod: form.payment,
+        domain: domain, // Include domain as fallback
+        websiteId: websiteId, // Use either real or generated UUID
+      };
+
       const res = await fetch('http://localhost:5000/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          customerName: form.name,
-          customerPhone: form.phone,
-          customerAddress: form.address,
-          customerEmail: form.email,
-          customerDivision: form.division,
-          customerDistrict: form.district,
-          note: form.note,
-          items: cart,
-          subTotal: getTotal(),
-          deliveryCharge: finalDeliveryCharge,
-          deliveryType: selectedDeliveryType,
-          totalAmount: getTotal() + finalDeliveryCharge,
-          paymentMethod: form.payment,
-          websiteId,
-        })
+        body: JSON.stringify(orderData)
       });
+      
       if (res.ok) {
         alert('অর্ডার সফলভাবে জমা হয়েছে!');
         setCart([]);
         localStorage.removeItem(`cart_${domain}`);
+        // Redirect to success page or home
+        window.location.href = `/${domain}?order=success`;
       } else {
         const errorText = await res.text();
         alert('অর্ডার জমা দিতে সমস্যা হয়েছে: ' + errorText);

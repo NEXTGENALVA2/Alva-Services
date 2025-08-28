@@ -1,0 +1,25 @@
+{
+  "customerName": "Test Customer",
+  "customerEmail": "test@example.com", 
+  "customerPhone": "01234567890",
+  "customerAddress": "Test Address",
+  "customerDistrict": "Dhaka", 
+  "customerDivision": "Dhaka",
+  "paymentMethod": "cash_on_delivery",
+  "deliveryType": "normal",
+  "deliveryCharge": 60,
+  "note": "Test order",
+  "items": [
+    {
+      "id": "3444e8f3-b37d-4366-96b2-49247f023422",
+      "name": "Test Product", 
+      "price": 100,
+      "quantity": 2,
+      "image": "test.jpg"
+    }
+  ],
+  "subTotal": 200,
+  "totalAmount": 260,
+  "domain": "mashyekh-1756107896786",
+  "websiteId": "258a55d6-258a-455d-8625-8a55d6258a55"
+}
