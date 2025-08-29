@@ -86,7 +86,6 @@ export default function AddProductForm({ onSubmit, initialImages }: AddProductFo
       alert('প্রথমে একটি ক্যাটাগরি সিলেক্ট করুন!');
       return;
     }
-    
     const name = prompt(`"${category}" ক্যাটাগরির জন্য নতুন সাবক্যাটাগরি নাম দিন:`);
     if (name && name.trim() && !categorySubcategories[category]?.includes(name.trim())) {
       const newSubcategory = name.trim();
@@ -94,6 +93,7 @@ export default function AddProductForm({ onSubmit, initialImages }: AddProductFo
         ...categorySubcategories,
         [category]: [...(categorySubcategories[category] || []), newSubcategory]
       });
+      setSubcategory(newSubcategory); // Fix: select newly added subcategory
     }
   };
 

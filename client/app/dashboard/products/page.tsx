@@ -99,6 +99,7 @@ export default function ProductsPage() {
           brand: productData.brand,
           sku: productData.sku,
           category: productData.category,
+          subcategory: productData.subcategory, // Add missing subcategory field
           condition: productData.condition,
           status: productData.status,
           price: productData.price || 0,
