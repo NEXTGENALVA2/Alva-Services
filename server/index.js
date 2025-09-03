@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const { sequelize } = require('./config/database');
+const { setupCronJobs } = require('./cronJobs');
 
 dotenv.config();
 
@@ -14,9 +15,16 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
+// Check subscription status for all routes
+const checkSubscriptionStatus = require('./middleware/subscriptionCheck');
+app.use(checkSubscriptionStatus);
+
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/admin', require('./routes/admin'));
+app.use('/api/renewal', require('./routes/renewal'));
+app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/subscription', require('./routes/subscription'));
 app.use('/api/websites', require('./routes/website'));
 app.use('/api/products', require('./routes/products'));
@@ -43,6 +51,8 @@ sequelize.authenticate()
   })
   .then(() => {
     console.log('Database synchronized.');
+    // Setup cron jobs after database is ready
+    setupCronJobs();
   })
   .catch(err => {
     console.warn('Database connection failed, running without database:');

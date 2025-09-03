@@ -1,6 +1,16 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../config/database');
 
+// Admin model
+const Admin = sequelize.define('Admin', {
+  id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
+  username: { type: DataTypes.STRING, unique: true, allowNull: false },
+  email: { type: DataTypes.STRING, unique: true, allowNull: false },
+  password: { type: DataTypes.STRING, allowNull: false },
+  role: { type: DataTypes.ENUM('admin', 'super_admin'), defaultValue: 'admin' },
+  isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+});
+
 // User model
 const User = sequelize.define('User', {
   id: { type: DataTypes.UUID, defaultValue: DataTypes.UUIDV4, primaryKey: true },
@@ -142,6 +152,7 @@ User.hasMany(Subscription, { foreignKey: 'userId' });
 Subscription.belongsTo(User, { foreignKey: 'userId' });
 
 module.exports = {
+  Admin,
   User,
   Website,
   Product,

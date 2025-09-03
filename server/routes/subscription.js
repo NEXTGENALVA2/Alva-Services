@@ -4,6 +4,99 @@ const authMiddleware = require('../middleware/auth');
 
 const router = express.Router();
 
+// Get current user subscription
+router.get('/current', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id, {
+      include: [{ model: Subscription, as: 'subscription' }]
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Return user subscription info
+    const subscriptionData = {
+      subscriptionType: user.subscriptionType || 'trial',
+      isActive: user.isActive,
+      trialEndsAt: user.trialEndsAt,
+      subscriptionEndsAt: user.subscriptionEndsAt,
+      subscriptionStatus: user.isActive ? 'active' : 'expired'
+    };
+
+    res.json(subscriptionData);
+  } catch (error) {
+    console.error('Get current subscription error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Start trial subscription
+router.post('/trial', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user already had trial
+    if (user.subscriptionType === 'trial' && user.trialEndsAt) {
+      return res.status(400).json({ message: 'Trial already used' });
+    }
+
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + 3);
+
+    await user.update({
+      subscriptionType: 'trial',
+      isActive: true,
+      trialEndsAt: trialEnd
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Trial activated successfully',
+      trialEndsAt: trialEnd
+    });
+  } catch (error) {
+    console.error('Trial activation error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Create paid subscription
+router.post('/create', authMiddleware, async (req, res) => {
+  try {
+    const { planId, price } = req.body;
+
+    // Plan configurations
+    const plans = {
+      monthly: { duration: 30, price: 500 },
+      '6month': { duration: 180, price: 2500 },
+      yearly: { duration: 365, price: 4500 }
+    };
+
+    const plan = plans[planId];
+    if (!plan) {
+      return res.status(400).json({ message: 'Invalid plan' });
+    }
+
+    // Here you would integrate with payment gateway
+    // For now, we'll simulate a payment URL
+    const paymentUrl = `http://localhost:3000/payment?plan=${planId}&amount=${price}`;
+
+    res.json({
+      success: true,
+      paymentUrl,
+      plan: { id: planId, ...plan }
+    });
+  } catch (error) {
+    console.error('Create subscription error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // Get subscription plans
 router.get('/plans', (req, res) => {
   const plans = [

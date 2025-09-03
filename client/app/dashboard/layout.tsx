@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import Sidebar from '../../components/Sidebar'
 import Topbar from '../../components/Topbar'
+import SubscriptionWarning from '../../components/SubscriptionWarning'
 
 // Simple translation function
 const t = (key: string): string => {
@@ -45,9 +46,13 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [showWarning, setShowWarning] = useState(false)
 
   useEffect(() => {
     setMounted(true);
+    // Check subscription status on mount
+    setShowWarning(true)
+    
     // Listen for language changes
     const handleLanguageChange = () => {
       // Force re-render when language changes
@@ -70,6 +75,9 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-gray-50">
+      {/* Subscription Warning Modal */}
+      {showWarning && <SubscriptionWarning onClose={() => setShowWarning(false)} />}
+      
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 

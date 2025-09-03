@@ -58,7 +58,7 @@ export default function Chatbot({ websiteId }: ChatbotProps) {
     setIsTyping(true);
 
     try {
-      const response = await axios.post('/api/chatbot/chat', {
+      const response = await axios.post('http://localhost:5000/api/chatbot/chat', {
         websiteId,
         message: inputMessage,
         conversationId
@@ -101,11 +101,31 @@ export default function Chatbot({ websiteId }: ChatbotProps) {
         setMessages(prev => [...prev, orderMessage]);
       }
 
-    } catch (error) {
+      // If order placed, show confirmation
+      if (response.data.orderPlaced && response.data.orderInfo) {
+        const orderConfirm: Message = {
+          id: (Date.now() + 4).toString(),
+          text: `আপনার অর্ডার সফলভাবে গ্রহণ করা হয়েছে! অর্ডার আইডি: ${response.data.orderInfo.id}`,
+          isBot: true,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, orderConfirm]);
+      }
+
+    } catch (error: any) {
       console.error('Error sending message:', error);
+      let errorText = 'দুঃখিত, একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।';
+      
+      // More specific error handling
+      if (error.response?.status === 404) {
+        errorText = 'চ্যাটবট সার্ভিস পাওয়া যাচ্ছে না। অনুগ্রহ করে পরে চেষ্টা করুন।';
+      } else if (error.code === 'ECONNREFUSED') {
+        errorText = 'সার্ভার সংযোগ সমস্যা। অনুগ্রহ করে পরে চেষ্টা করুন।';
+      }
+      
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'দুঃখিত, একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।',
+        text: errorText,
         isBot: true,
         timestamp: new Date()
       };

@@ -1,7 +1,10 @@
 {
+  "/not-found": "app/not-found.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/admin/page": "app/admin/page.js",
   "/[domain]/page": "app/[domain]/page.js",
-  "/[domain]/checkout/page": "app/[domain]/checkout/page.js",
+  "/page": "app/page.js",
+  "/admin/dashboard/users/page": "app/admin/dashboard/users/page.js",
   "/dashboard/page": "app/dashboard/page.js",
-  "/dashboard/orders/page": "app/dashboard/orders/page.js",
-  "/dashboard/products/page": "app/dashboard/products/page.js"
+  "/admin/dashboard/page": "app/admin/dashboard/page.js"
 }

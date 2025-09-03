@@ -4,9 +4,11 @@ import { useCart } from './CartContext';
 import dynamic from 'next/dynamic';
 import { getDomain } from '../lib/domain';
 
+interface TopbarProps {
+  setSidebarOpen?: (open: boolean) => void;
+}
 
-export default function Topbar() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export default function Topbar({ setSidebarOpen }: TopbarProps) {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [mounted, setMounted] = useState(false);
 
@@ -47,7 +49,7 @@ export default function Topbar() {
       <div className="flex items-center gap-4">
         {/* Mobile menu button */}
         <button
-          onClick={() => setSidebarOpen(true)}
+          onClick={() => setSidebarOpen?.(true)}
           className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
         >
           <Menu className="h-6 w-6" />
@@ -93,7 +95,7 @@ export default function Topbar() {
   <div className="flex items-center gap-4">
         {/* Mobile menu button */}
         <button
-          onClick={() => setSidebarOpen(true)}
+          onClick={() => setSidebarOpen?.(true)}
           className="lg:hidden p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
         >
           <Menu className="h-6 w-6" />

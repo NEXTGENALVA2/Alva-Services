@@ -15,6 +15,10 @@
     "postinstall": "cd server && npm install && cd ../client && npm install"
   },
   "dependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "^8.2.2",
+    "openai": "^5.16.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0"
   }
 }
