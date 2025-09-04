@@ -48,11 +48,22 @@ function generatePlaceholderImage(category: string): string {
 
 async function extractProductData(url: string) {
   try {
-    const fetch = (await import('node-fetch')).default;
+    // Prefer the global fetch (available in Next.js server runtime).
+    // Fallback to node-fetch only if fetch is not available (e.g., unusual runtimes).
+    let fetchFn: any;
+    if (typeof globalThis.fetch === 'function') {
+      fetchFn = globalThis.fetch.bind(globalThis);
+    } else {
+      const nodeFetch = (await import('node-fetch')).default;
+      // Attach to globalThis for any subsequent calls
+      (globalThis as any).fetch = nodeFetch;
+      fetchFn = nodeFetch;
+    }
+
     const cheerio = await import('cheerio');
     
     // Add headers to bypass basic bot detection
-    const res = await fetch(url, {
+  const res = await fetchFn(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
