@@ -10,7 +10,8 @@ import {
   Settings, 
   LogOut,
   Menu,
-  X
+  X,
+  Palette
 } from 'lucide-react'
 import Sidebar from '../../components/Sidebar'
 import Topbar from '../../components/Topbar'
@@ -69,19 +70,19 @@ export default function DashboardLayout({
     { name: mounted ? t('products') : 'প্রোডাক্ট', href: '/dashboard/products', icon: Package },
     { name: mounted ? t('orders') : 'অর্ডার', href: '/dashboard/orders', icon: ShoppingCart },
     { name: mounted ? t('analytics') : 'অ্যানালিটিক্স', href: '/dashboard/analytics', icon: BarChart3 },
+    { name: mounted ? t('customization') : 'কাস্টমাইজেশন', href: '/dashboard/customization', icon: Palette },
     { name: mounted ? t('settings') : 'সেটিংস', href: '/dashboard/settings', icon: Settings },
-    { name: mounted ? t('customization') : 'কাস্টমাইজেশন', href: '/dashboard/customization', icon: Settings },
   ]
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
       {/* Subscription Warning Modal */}
       {showWarning && <SubscriptionWarning onClose={() => setShowWarning(false)} />}
       
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden transition-all duration-300"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -93,7 +94,11 @@ export default function DashboardLayout({
       />
       <div className="flex-1 flex flex-col lg:ml-0">
         <Topbar setSidebarOpen={setSidebarOpen} />
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-auto">
+          <div className="max-w-7xl mx-auto">
+            {children}
+          </div>
+        </main>
       </div>
     </div>
   )

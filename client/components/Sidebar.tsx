@@ -19,27 +19,33 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, navigation }: Sid
   const pathname = usePathname();
 
   return (
-    <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r transform ${
+    <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white/95 backdrop-blur-xl border-r border-slate-200 shadow-xl transform ${
       sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-    } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
+    } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 lg:shadow-none lg:bg-white`}>
       {/* Mobile close button */}
-      <div className="lg:hidden flex items-center justify-between p-4 border-b">
-        <div className="text-2xl font-bold text-purple-700">EcomEasy</div>
+      <div className="lg:hidden flex items-center justify-between p-4 border-b border-slate-200">
+        <div className="flex items-center space-x-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg"></div>
+          <div className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">EcomEasy</div>
+        </div>
         <button
           onClick={() => setSidebarOpen(false)}
-          className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100"
+          className="p-2 rounded-lg text-slate-400 hover:text-slate-500 hover:bg-slate-100 transition-colors"
         >
-          <X className="h-6 w-6" />
+          <X className="h-5 w-5" />
         </button>
       </div>
 
       {/* Desktop header */}
-      <div className="hidden lg:flex items-center p-4 border-b">
-        <div className="text-2xl font-bold text-purple-700">EcomEasy</div>
+      <div className="hidden lg:flex items-center p-6 border-b border-slate-200">
+        <div className="flex items-center space-x-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg"></div>
+          <div className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">EcomEasy</div>
+        </div>
       </div>
 
       <nav className="flex-1 p-4">
-        <ul className="space-y-2">
+        <ul className="space-y-1">
           {navigation.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -48,14 +54,16 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, navigation }: Sid
               <li key={item.href}>
                 <Link 
                   href={item.href} 
-                  className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium transition-colors ${
+                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-200 ${
                     isActive 
-                      ? 'bg-purple-100 text-purple-700' 
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 shadow-sm border border-blue-100' 
+                      : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                   }`}
                   onClick={() => setSidebarOpen(false)} // Close sidebar on mobile after navigation
                 >
-                  <Icon className="h-5 w-5" />
+                  <Icon className={`h-5 w-5 transition-transform duration-200 ${
+                    isActive ? 'scale-110' : 'group-hover:scale-105'
+                  }`} />
                   {item.name}
                 </Link>
               </li>
