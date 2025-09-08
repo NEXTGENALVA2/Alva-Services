@@ -1,3 +1,6 @@
+import React from 'react';
+import Link from 'next/link';
+import { Button } from '../components/ui';
 
 export default function Home() {
   return (
@@ -16,8 +19,12 @@ export default function Home() {
         <h1 className="text-4xl md:text-5xl font-extrabold mb-4">১০ সেকেন্ডে তৈরি করুন<br/>আপনার ই-কমার্স ওয়েবসাইট</h1>
         <p className="text-lg md:text-xl mb-6">সাইনআপ করলেই সম্পূর্ণ ই-কমার্স ফিচারসহ। যেমন: চ্যাটবট, পেমেন্ট গেটওয়ে, প্রিমিয়াম ট্রায়াল এবং আরও কিছু।</p>
         <div className="flex flex-col md:flex-row justify-center items-center gap-4 mb-8">
-          <a href="/auth/register" className="bg-yellow-400 text-gray-900 font-bold px-6 py-3 rounded-lg shadow hover:bg-yellow-500 transition">১০ সেকেন্ডে ফ্রি ট্রায়াল শুরু করুন</a>
-          <a href="#pricing" className="bg-white text-blue-700 font-bold px-6 py-3 rounded-lg shadow hover:bg-gray-100 transition">দেখুন প্ল্যান</a>
+          <Link href="/auth/register">
+            <Button className="px-6 py-3 bg-yellow-400 text-gray-900 font-bold shadow hover:bg-yellow-500">১০ সেকেন্ডে ফ্রি ট্রায়াল শুরু করুন</Button>
+          </Link>
+          <a href="#pricing">
+            <Button variant="outline" className="px-6 py-3">দেখুন প্ল্যান</Button>
+          </a>
         </div>
       </section>
 
@@ -55,7 +62,9 @@ export default function Home() {
               <li>১০টি পণ্য</li>
               <li>সাপোর্ট</li>
             </ul>
-            <a href="/auth/register" className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">ট্রায়াল শুরু করুন</a>
+            <Link href="/auth/register">
+              <Button className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">ট্রায়াল শুরু করুন</Button>
+            </Link>
           </div>
           <div className="bg-gray-50 rounded-lg shadow p-8 text-center w-64">
             <h3 className="text-xl font-bold mb-2">মাসিক</h3>
@@ -93,7 +102,9 @@ export default function Home() {
       {/* CTA Section */}
       <section className="w-full py-12 px-4 bg-gradient-to-r from-blue-700 via-purple-600 to-blue-500 text-center text-white">
         <h2 className="text-2xl md:text-3xl font-bold mb-4">আজই শুরু করুন আপনার ই-কমার্স যাত্রা</h2>
-        <a href="/auth/register" className="bg-yellow-400 text-gray-900 font-bold px-6 py-3 rounded-lg shadow hover:bg-yellow-500 transition">এখনই শুরু করুন</a>
+        <Link href="/auth/register">
+          <Button className="bg-yellow-400 text-gray-900 font-bold px-6 py-3 rounded-lg shadow hover:bg-yellow-500 transition">এখনই শুরু করুন</Button>
+        </Link>
       </section>
 
       {/* Footer */}

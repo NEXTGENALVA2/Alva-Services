@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import axios from 'axios'
 import { getDomain } from '../../lib/domain'
+import { Button } from '@/components/ui'
 
 // Define Analytics interface
 interface Analytics {
@@ -335,22 +336,24 @@ export default function Dashboard() {
         </div>
       </div>
 
+
+
       {/* Quick Actions */}
       <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-slate-900 mb-4">{t('quickActions')}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <button className="flex items-center justify-center space-x-2 bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-3 rounded-lg transition-colors duration-200 font-medium">
+          <Button variant="subtle" size="lg" className="flex items-center justify-center space-x-2">
             <Plus className="w-4 h-4" />
             <span>{t('addProduct')}</span>
-          </button>
-          <button className="flex items-center justify-center space-x-2 bg-amber-50 hover:bg-amber-100 text-amber-700 px-4 py-3 rounded-lg transition-colors duration-200 font-medium">
+          </Button>
+          <Button variant="subtle" size="lg" className="flex items-center justify-center space-x-2">
             <Eye className="w-4 h-4" />
             <span>{t('viewOrders')}</span>
-          </button>
-          <button className="flex items-center justify-center space-x-2 bg-violet-50 hover:bg-violet-100 text-violet-700 px-4 py-3 rounded-lg transition-colors duration-200 font-medium">
+          </Button>
+          <Button variant="subtle" size="lg" className="flex items-center justify-center space-x-2">
             <BarChart3 className="w-4 h-4" />
             <span>{t('viewAnalytics')}</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -375,13 +378,10 @@ export default function Dashboard() {
                     {!website ? 'প্রথমে আপনার ওয়েবসাইট তৈরি করুন' : t('welcomeDesc')}
                   </p>
                 </div>
-                <button
-                  className="inline-flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 shadow-sm hover:shadow-md"
-                  onClick={handleCreateWebsite}
-                >
+                <Button onClick={handleCreateWebsite} size="lg">
                   <Plus className="w-4 h-4" />
                   <span>{t('createWebsite')}</span>
-                </button>
+                </Button>
               </div>
             </div>
           </div>
