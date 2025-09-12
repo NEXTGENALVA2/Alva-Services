@@ -300,7 +300,7 @@ export default function Page({ params }: { params: { domain: string } }) {
         console.log('DEBUG: Fetching website data for domain:', params.domain);
         
         const [websiteRes, bannerRes] = await Promise.all([
-          fetch(`http://localhost:5000/api/websites/public/${params.domain}`),
+          fetch(`http://localhost:5000/api/website/public/${params.domain}`),
           axios.get(`http://localhost:5000/api/banner?domain=${params.domain}`).catch(() => null)
         ]);
         
@@ -434,6 +434,32 @@ const getTotalPrice = () => {
     }
 
     try {
+      console.log('Website object:', website);
+      console.log('Available website properties:', Object.keys(website || {}));
+      
+      // Get websiteId - use multiple fallbacks
+      let websiteId = website?.id || website?.websiteId;
+      
+      // If no ID found, try to find website by domain
+      if (!websiteId) {
+        try {
+          const websiteRes = await fetch(`http://localhost:5000/api/website/public/${params.domain}`);
+          if (websiteRes.ok) {
+            const websiteData = await websiteRes.json();
+            websiteId = websiteData?.website?.id;
+            console.log('Fetched websiteId from API:', websiteId);
+          }
+        } catch (err) {
+          console.error('Failed to fetch website ID:', err);
+        }
+      }
+      
+      // Last fallback - use domain as identifier
+      if (!websiteId) {
+        websiteId = params.domain;
+        console.log('Using domain as websiteId fallback:', websiteId);
+      }
+
       const orderData = {
         customerName: customerInfo.name,
         customerPhone: customerInfo.phone,
@@ -442,11 +468,12 @@ const getTotalPrice = () => {
         items: cart,
         totalAmount: getTotalPrice(),
         paymentMethod: 'cash_on_delivery',
-        websiteId: website?.id
+        websiteId: websiteId,
+        domain: params.domain  // Add domain for server reference
       };
 
       console.log('Order Data:', orderData);
-      console.log('Website ID:', website?.id);
+      console.log('Final Website ID:', websiteId);
       console.log('Cart:', cart);
 
       // Send order to backend
@@ -466,9 +493,12 @@ const getTotalPrice = () => {
         // Generate and print invoice
         generateInvoice(order);
       } else {
-        alert(t('orderFailed', currentLang));
+        const errorData = await res.text();
+        console.error('Order failed:', errorData);
+        alert(t('orderFailed', currentLang) + ' ' + errorData);
       }
     } catch (error) {
+      console.error('Order error:', error);
       alert(t('orderFailed', currentLang));
     }
   };

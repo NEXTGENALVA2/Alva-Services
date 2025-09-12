@@ -178,10 +178,11 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
       
       // Try to fetch website UUID by domain (with fallback)
       try {
-        const websiteRes = await fetch(`http://localhost:5000/api/websites/by-domain/${domain}`);
+        const websiteRes = await fetch(`http://localhost:5000/api/website/public/${domain}`);
         if (websiteRes.ok) {
           const websiteData = await websiteRes.json();
-          websiteId = websiteData.id;
+          websiteId = websiteData.website?.id;
+          console.log('Found website from API:', websiteId);
         }
       } catch (err) {
         console.log('Website lookup failed, proceeding with generated websiteId:', err);

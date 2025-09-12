@@ -120,18 +120,32 @@ router.post('/', async (req, res) => {
 
     // Verify website exists or create if needed
     let website = await Website.findByPk(websiteId);
+    
+    // If not found by ID, try to find by domain
+    if (!website && req.body.domain) {
+      console.log('Website not found by ID, searching by domain:', req.body.domain);
+      website = await Website.findOne({ 
+        where: { domain: req.body.domain } 
+      });
+      if (website) {
+        console.log('Found website by domain:', website.id);
+        websiteId = website.id; // Update websiteId to use the found website's ID
+      }
+    }
+    
     if (!website) {
       // Auto-create website entry for fallback websiteId
-      console.log('Creating fallback website entry for websiteId:', websiteId);
+      console.log('Creating fallback website entry for domain:', req.body.domain);
       try {
+        // Create with a simple domain-based name, let DB auto-generate UUID
         website = await Website.create({
-          id: websiteId,
           name: `Auto Website - ${req.body.domain || 'Unknown'}`,
           domain: req.body.domain || 'unknown-domain',
           userId: null, // Auto-generated websites don't have a specific user
           settings: {}
         });
         console.log('Successfully created fallback website:', website.id);
+        websiteId = website.id; // Use the auto-generated ID
       } catch (err) {
         console.error('Failed to create website entry:', err);
         return res.status(400).json({ message: 'Invalid websiteId format or creation failed' });

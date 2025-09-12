@@ -8,6 +8,8 @@ import { getDomain } from '../../lib/domain'
 import { Button } from "../../components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Badge } from "../../components/ui/badge"
+import { Input } from "../../components/ui/input"
+import { Label } from "../../components/ui/label"
 
 // Define Analytics interface
 interface Analytics {
@@ -19,11 +21,22 @@ interface Analytics {
   monthlyRevenue?: number;
 }
 
+interface Website {
+  id: number;
+  name: string;
+  domain: string;
+  url: string;
+}
+
 export default function Dashboard() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [orders, setOrders] = useState<any[]>([])
   const [domain, setDomain] = useState<string>('')
   const [loading, setLoading] = useState(true)
+  const [website, setWebsite] = useState<Website | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [websiteName, setWebsiteName] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -31,6 +44,35 @@ export default function Dashboard() {
         const token = localStorage.getItem('token')
         const user = JSON.parse(localStorage.getItem('user') || '{}')
         
+        // Get domain first to check if user has website
+        const domainData = await getDomain()
+        console.log('Domain data:', domainData)
+        
+        if (!domainData?.domain) {
+          // No domain found, user needs to create website
+          setShowCreateModal(true)
+          setLoading(false)
+          return
+        }
+
+        // User has domain, try to get full website details
+        try {
+          const websiteRes = await axios.get('http://localhost:5000/api/website', {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          setWebsite(websiteRes.data)
+          console.log('Website found:', websiteRes.data)
+        } catch (websiteError: any) {
+          console.error('Website API error:', websiteError.response?.data || websiteError.message)
+          // Even if website API fails, continue with domain data
+          setWebsite({ 
+            id: 0, 
+            domain: domainData.domain, 
+            name: 'Your Website',
+            url: `http://localhost:3000/${domainData.domain}`
+          })
+        }
+
         // Fetch analytics
         const analyticsRes = await axios.get('http://localhost:5000/api/analytics', {
           headers: { Authorization: `Bearer ${token}` }
@@ -43,8 +85,7 @@ export default function Dashboard() {
         })
         setOrders(ordersRes.data)
 
-        // Get domain
-        const domainData = await getDomain()
+        // Set domain from previously fetched data
         setDomain(domainData?.domain || '')
       } catch (error) {
         console.error('Error fetching data:', error)
@@ -55,6 +96,106 @@ export default function Dashboard() {
 
     fetchData()
   }, [])
+
+  const createWebsite = async () => {
+    if (!websiteName.trim()) {
+      alert('অনুগ্রহ করে ওয়েবসাইটের নাম দিন')
+      return
+    }
+
+    setIsCreating(true)
+    try {
+      const token = localStorage.getItem('token')
+      console.log('=== Website Creation Debug ===')
+      console.log('Creating website with name:', websiteName)
+      console.log('Token exists:', !!token)
+      console.log('Token value:', token?.substring(0, 20) + '...')
+      
+      // Test server connectivity first
+      console.log('Testing server connectivity...')
+      const healthCheck = await fetch('http://localhost:5000/api/website', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      console.log('Health check status:', healthCheck.status)
+      
+      const response = await axios.post('http://localhost:5000/api/website/create', {
+        name: websiteName,
+        theme: 'default'
+      }, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 10000
+      })
+      
+      console.log('Website creation response:', response.data)
+      setWebsite(response.data.website)
+      setShowCreateModal(false)
+      setWebsiteName('')
+      
+      // Show success message
+      alert('ওয়েবসাইট সফলভাবে তৈরি হয়েছে!')
+      
+      // Refresh the page to load analytics
+      window.location.reload()
+    } catch (error: any) {
+      console.error('=== Website Creation Error ===')
+      console.error('Error:', error)
+      console.error('Error message:', error.message)
+      console.error('Error response:', error.response?.data)
+      console.error('Error status:', error.response?.status)
+      
+      if (error.code === 'ECONNREFUSED') {
+        alert('সার্ভারের সাথে সংযোগ হচ্ছে না। অনুগ্রহ করে সার্ভার চালু আছে কিনা চেক করুন।')
+      } else if (error.response?.status === 401) {
+        alert('আপনার লগইন সেশন শেষ হয়ে গেছে। দয়া করে আবার লগইন করুন।')
+        localStorage.removeItem('token')
+        window.location.href = '/auth/login'
+      } else if (error.response?.status === 400) {
+        alert(error.response.data.message || 'ওয়েবসাইট তৈরি করতে সমস্যা হয়েছে')
+      } else {
+        alert('ওয়েবসাইট তৈরি করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
+      }
+    } finally {
+      setIsCreating(false)
+    }
+  }
+
+  if (showCreateModal) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="text-center">🌟 ওয়েবসাইট তৈরি করুন</CardTitle>
+            <CardDescription className="text-center">
+              মাত্র ১০ সেকেন্ডে আপনার ই-কমার্স ওয়েবসাইট তৈরি করুন
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="websiteName">ওয়েবসাইটের নাম</Label>
+              <Input
+                id="websiteName"
+                type="text"
+                placeholder="যেমন: আমার দোকান"
+                value={websiteName}
+                onChange={(e) => setWebsiteName(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <Button 
+              onClick={createWebsite} 
+              className="w-full"
+              disabled={isCreating}
+            >
+              {isCreating ? 'তৈরি হচ্ছে...' : '🚀 ওয়েবসাইট তৈরি করুন'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -78,9 +219,11 @@ export default function Dashboard() {
               <p className="text-gray-600">আপনার ব্যবসার সম্পূর্ণ তথ্য এক জায়গায়</p>
             </div>
             <div className="flex space-x-3">
-              <Button variant="outline" asChild>
-                <a href={`/${domain}`} target="_blank">ওয়েবসাইট দেখুন</a>
-              </Button>
+              {website && (
+                <Button variant="outline" asChild>
+                  <a href={`https://${website.domain}.yourplatform.com`} target="_blank">ওয়েবসাইট দেখুন</a>
+                </Button>
+              )}
               <Button asChild>
                 <a href="/dashboard/products">প্রোডাক্ট যোগ করুন</a>
               </Button>
@@ -92,6 +235,38 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
+        {/* Website Info */}
+        {website && (
+          <Card className="mb-8 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl">🌐 {website.name}</CardTitle>
+                  <CardDescription>
+                    আপনার ওয়েবসাইট সফলভাবে তৈরি হয়েছে এবং চালু আছে
+                  </CardDescription>
+                </div>
+                <Badge variant="secondary" className="bg-green-100 text-green-800">
+                  ✅ সক্রিয়
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600">ওয়েবসাইট ঠিকানা:</p>
+                  <p className="font-medium text-blue-600">{website.domain}.yourplatform.com</p>
+                </div>
+                <Button asChild>
+                  <a href={`https://${website.domain}.yourplatform.com`} target="_blank">
+                    🚀 ওয়েবসাইট দেখুন
+                  </a>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Analytics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
