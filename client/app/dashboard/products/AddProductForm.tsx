@@ -726,7 +726,9 @@ export default function AddProductForm({ onSubmit, initialImages }: AddProductFo
           onChange={e => setDeliveryCharge(e.target.value)}
           placeholder="Delivery Charge"
           min="0"
+          step="0.01"
         />
+        <p className="text-xs text-gray-500 mt-1">প্রতিটি প্রোডাক্টের জন্য আলাদা delivery charge সেট করুন (ওজন/size অনুযায়ী)।</p>
       </div>
 
       {/* Submit */}

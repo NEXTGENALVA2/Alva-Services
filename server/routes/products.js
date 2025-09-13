@@ -84,7 +84,8 @@ router.post('/', authMiddleware, async (req, res) => {
       details,
       unit,
       warranty,
-      deliveryApplied
+      deliveryApplied,
+      deliveryCharge
     } = req.body;
 
     // Image limit validation
@@ -150,6 +151,7 @@ router.post('/', authMiddleware, async (req, res) => {
       unit: unit || '',
       warranty: warranty || '',
       deliveryApplied: deliveryApplied !== undefined ? deliveryApplied : true,
+      deliveryCharge: deliveryCharge ? parseFloat(deliveryCharge) : 0,
       websiteId: website.id
     };
 

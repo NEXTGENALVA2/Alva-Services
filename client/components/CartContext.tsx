@@ -7,6 +7,8 @@ interface CartItem {
   price: number;
   image: string;
   quantity: number;
+  deliveryApplied?: boolean;
+  deliveryCharge?: number;
 }
 
 interface CartContextType {

@@ -105,22 +105,29 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
       division: form.division,
       district: form.district,
       deliveryCharge,
-      selectedDeliveryType
+      selectedDeliveryType,
+      cart
     });
     
-    // If division not selected, return default inside Dhaka charge
+    // Calculate individual product delivery charges
+    const productDeliveryCharges = cart.reduce((sum, item) => {
+      if (item.deliveryApplied && item.deliveryCharge > 0) {
+        const itemDeliveryCharge = parseFloat(item.deliveryCharge) * item.quantity;
+        console.log(`Product ${item.name}: delivery charge ${item.deliveryCharge} x ${item.quantity} = ${itemDeliveryCharge}`);
+        return sum + itemDeliveryCharge;
+      }
+      return sum;
+    }, 0);
+    
+    console.log('Total product delivery charges:', productDeliveryCharges);
+    
+    // If division not selected, use default inside Dhaka charge + product charges
     if (!form.division) {
-      console.log('No division selected, using inside Dhaka charge:', deliveryCharge.insideDhaka);
-      return deliveryCharge.insideDhaka;
+      console.log('No division selected, using inside Dhaka charge + product charges:', deliveryCharge.insideDhaka + productDeliveryCharges);
+      return deliveryCharge.insideDhaka + productDeliveryCharges;
     }
     
-    // Free delivery check
-    if (deliveryCharge.freeDeliveryMinimum > 0 && total >= deliveryCharge.freeDeliveryMinimum) {
-      console.log('Free delivery applied');
-      return 0;
-    }
-    
-    // Base delivery charge calculation
+    // Base geographical delivery charge calculation
     let baseCharge;
     
     // Only Dhaka Division AND Dhaka District gets inside Dhaka rate
@@ -136,10 +143,20 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
     // Express delivery additional charge
     if (selectedDeliveryType === 'express' && deliveryCharge.expressDelivery > 0) {
       baseCharge += deliveryCharge.expressDelivery;
-      console.log('Express delivery added, final charge:', baseCharge);
+      console.log('Express delivery added to base charge:', baseCharge);
     }
     
-    return baseCharge;
+    // Total delivery charge = base charge + product-specific charges
+    const totalDeliveryCharge = baseCharge + productDeliveryCharges;
+    console.log('Final delivery charge (base + products):', totalDeliveryCharge);
+    
+    // Check for free delivery (only applies to base geographical charge, not product charges)
+    if (deliveryCharge.freeDeliveryMinimum > 0 && total >= deliveryCharge.freeDeliveryMinimum) {
+      console.log('Free delivery applied to base charge only, product charges still apply');
+      return productDeliveryCharges; // Only product charges remain
+    }
+    
+    return totalDeliveryCharge;
   };
   
   const finalDeliveryCharge = calculateDeliveryCharge();
@@ -178,7 +195,7 @@ export default function CheckoutPage({ params }: { params: { domain: string } })
       
       // Try to fetch website UUID by domain (with fallback)
       try {
-        const websiteRes = await fetch(`http://localhost:5000/api/website/public/${domain}`);
+        const websiteRes = await fetch(`http://localhost:5000/api/websites/public/${domain}`);
         if (websiteRes.ok) {
           const websiteData = await websiteRes.json();
           websiteId = websiteData.website?.id;

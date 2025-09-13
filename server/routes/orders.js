@@ -170,6 +170,37 @@ router.post('/', async (req, res) => {
       note
     });
 
+    // Verify and calculate actual delivery charges from database
+    let calculatedDeliveryCharge = 0;
+    for (const item of items) {
+      try {
+        const product = await Product.findByPk(item.id);
+        if (product && product.deliveryApplied && product.deliveryCharge > 0) {
+          const itemDeliveryCharge = parseFloat(product.deliveryCharge) * item.quantity;
+          calculatedDeliveryCharge += itemDeliveryCharge;
+          console.log(`Product ${product.name}: delivery charge ${product.deliveryCharge} x ${item.quantity} = ${itemDeliveryCharge}`);
+        }
+      } catch (err) {
+        console.error(`Error fetching product ${item.id} for delivery calculation:`, err);
+      }
+    }
+    
+    console.log('Backend calculated product delivery charges:', calculatedDeliveryCharge);
+    console.log('Frontend sent delivery charge:', deliveryCharge);
+    
+    // Use the higher of calculated vs sent delivery charge for security
+    // (in case frontend calculation was tampered with)
+    const finalDeliveryCharge = Math.max(calculatedDeliveryCharge, deliveryCharge || 0);
+    
+    // Update order with verified delivery charge if different
+    if (finalDeliveryCharge !== deliveryCharge) {
+      console.log(`Updating delivery charge from ${deliveryCharge} to ${finalDeliveryCharge}`);
+      await order.update({
+        deliveryCharge: finalDeliveryCharge,
+        totalAmount: (subTotal || totalAmount - deliveryCharge) + finalDeliveryCharge
+      });
+    }
+
     // Create order items
     for (const item of items) {
       await OrderItem.create({

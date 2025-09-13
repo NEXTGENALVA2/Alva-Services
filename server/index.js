@@ -26,7 +26,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/renewal', require('./routes/renewal'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/subscription', require('./routes/subscription'));
-app.use('/api/website', require('./routes/website'));
+app.use('/api/websites', require('./routes/website'));
 app.use('/api/products', require('./routes/products'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/analytics', require('./routes/analytics'));

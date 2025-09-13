@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { MessageCircle, Send, X } from 'lucide-react'
 import axios from 'axios'
+import { useRegion } from '@/components/RegionContext'
 
 interface Message {
   id: string
@@ -16,6 +17,7 @@ interface ChatbotProps {
 }
 
 export default function Chatbot({ websiteId }: ChatbotProps) {
+  const { formatPrice } = useRegion()
   const [isOpen, setIsOpen] = useState<boolean>(false)
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState<string>('')
@@ -82,7 +84,7 @@ export default function Chatbot({ websiteId }: ChatbotProps) {
         const productsMessage: Message = {
           id: (Date.now() + 2).toString(),
           text: `এখানে কিছু জনপ্রিয় পণ্য রয়েছে:\n${response.data.suggestedProducts.map((p: any) => 
-            `• ${p.name} - ৳${p.price}`
+            `• ${p.name} - ${formatPrice(p.price)}`
           ).join('\n')}`,
           isBot: true,
           timestamp: new Date()

@@ -6,6 +6,9 @@ import { ArrowLeft, ShoppingCart, Plus, Minus } from 'lucide-react';
 import { useCart } from '../../../../components/CartContext';
 
 export default function ProductDetailsPage({ params }: { params: { domain: string; id: string } }) {
+
+
+
   const [product, setProduct] = React.useState<any>(null);
   const [website, setWebsite] = React.useState<any>(null);
   const [loading, setLoading] = React.useState(true);
@@ -13,13 +16,21 @@ export default function ProductDetailsPage({ params }: { params: { domain: strin
   const [quantity, setQuantity] = React.useState(1);
   const router = useRouter();
   const { cart, addToCart: addToCartContext, refreshCart } = useCart();
-
-  // Debug state for cart
   const [debugCart, setDebugCart] = React.useState<any[]>([]);
   const showCartDebug = () => {
     console.log('Debug cart from context:', cart);
     setDebugCart(cart);
   };
+
+  // Auto-redirect if error
+  React.useEffect(() => {
+    if (error || !website || !product) {
+      const timer = setTimeout(() => {
+        router.push(`/${params.domain}`);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [error, website, product, params.domain, router]);
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -35,13 +46,17 @@ export default function ProductDetailsPage({ params }: { params: { domain: strin
       
       try {
         // Fetch product directly by domain and id
-        const productRes = await fetch(`http://localhost:5000/api/products/${params.domain}/${params.id}`, {
+        const apiUrl = `http://localhost:5000/api/products/${params.domain}/${params.id}`;
+        console.log('API URL:', apiUrl);
+        
+        const productRes = await fetch(apiUrl, {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
           },
         });
         console.log('Product response status:', productRes.status);
+        console.log('Product response headers:', Object.fromEntries(productRes.headers.entries()));
         
         if (productRes.ok) {
           const productData = await productRes.json();
@@ -52,8 +67,9 @@ export default function ProductDetailsPage({ params }: { params: { domain: strin
           console.error('Product not found:', productRes.status);
           const errorText = await productRes.text();
           console.error('Error details:', errorText);
+          console.error('Response URL:', productRes.url);
           setProduct(null);
-          setError('পণ্য পাওয়া যায়নি');
+          setError(`পণ্য পাওয়া যায়নি (Status: ${productRes.status})`);
         }
         
         // Fetch website info
@@ -99,7 +115,9 @@ export default function ProductDetailsPage({ params }: { params: { domain: strin
       name: product?.name ?? product?.title ?? 'Product',
       price: Number(product?.price ?? product?.sellingPrice ?? 0) || 0,
       quantity: quantity,
-      image: product?.images?.[0] || product?.image || product?.imageUrl || ''
+      image: product?.images?.[0] || product?.image || product?.imageUrl || '',
+      deliveryApplied: Boolean(product?.deliveryApplied),
+      deliveryCharge: Number(product?.deliveryCharge ?? 0) || 0
     };
     
     // Add with domain parameter
@@ -122,7 +140,9 @@ export default function ProductDetailsPage({ params }: { params: { domain: strin
       name: product?.name ?? product?.title ?? 'Product',
       price: Number(product?.price ?? product?.sellingPrice ?? 0) || 0,
       quantity: quantity,
-      image: product?.images?.[0] || product?.image || product?.imageUrl || ''
+      image: product?.images?.[0] || product?.image || product?.imageUrl || '',
+      deliveryApplied: Boolean(product?.deliveryApplied),
+      deliveryCharge: Number(product?.deliveryCharge ?? 0) || 0
     };
     
     // Add with domain parameter
@@ -155,12 +175,19 @@ export default function ProductDetailsPage({ params }: { params: { domain: strin
         <p className="text-gray-600 mb-4">
           Domain: {params.domain}, Product ID: {params.id}
         </p>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4 max-w-md">
+          <p className="text-sm text-yellow-800">
+            <strong>সম্ভাব্য সমাধান:</strong> URL-এ ডোমেইনটি সঠিক কিনা চেক করুন। 
+            ডোমেইনে '1' এর পরিবর্তে 't' অক্ষর থাকতে পারে।
+          </p>
+        </div>
         <button 
           onClick={() => router.push(`/${params.domain}`)}
           className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
         >
           ওয়েবসাইটে ফিরে যান
         </button>
+        <p className="mt-2 text-sm text-gray-500">Automatically redirecting in 3 seconds...</p>
       </div>
     );
   }

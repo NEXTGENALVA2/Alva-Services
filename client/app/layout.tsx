@@ -3,6 +3,7 @@ import { getPixelSettings } from '../lib/pixel';
 import type { Metadata } from 'next';
 import { CartProvider } from '../components/CartContext';
 import { ThemeProvider } from '../components/ThemeContext';
+import { RegionProvider } from '@/components/RegionContext';
 import { Inter } from 'next/font/google';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -28,12 +29,14 @@ export default async function RootLayout({
         {/* ...existing code... */}
       </head>
       <body className={inter.className}>
-        <CartProvider>
-          <ThemeProvider>
-            {children}
-            <Chatbot websiteId={websiteId} />
-          </ThemeProvider>
-        </CartProvider>
+        <RegionProvider>
+          <CartProvider>
+            <ThemeProvider>
+              {children}
+              <Chatbot websiteId={websiteId} />
+            </ThemeProvider>
+          </CartProvider>
+        </RegionProvider>
       </body>
     </html>
   );

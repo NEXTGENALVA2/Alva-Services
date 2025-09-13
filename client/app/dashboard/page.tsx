@@ -5,6 +5,7 @@ import React from 'react'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
 import axios from 'axios'
 import { getDomain } from '../../lib/domain'
+import { useRegion } from '@/components/RegionContext'
 import { Button } from "../../components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../components/ui/card"
 import { Badge } from "../../components/ui/badge"
@@ -29,6 +30,10 @@ interface Website {
 }
 
 export default function Dashboard() {
+  const { formatPrice, t, currentLanguage } = useRegion()
+  
+  console.log('Dashboard current language:', currentLanguage)
+  
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [orders, setOrders] = useState<any[]>([])
   const [domain, setDomain] = useState<string>('')
@@ -99,7 +104,7 @@ export default function Dashboard() {
 
   const createWebsite = async () => {
     if (!websiteName.trim()) {
-      alert('অনুগ্রহ করে ওয়েবসাইটের নাম দিন')
+  alert(t('fillAllFields'))
       return
     }
 
@@ -135,7 +140,7 @@ export default function Dashboard() {
       setWebsiteName('')
       
       // Show success message
-      alert('ওয়েবসাইট সফলভাবে তৈরি হয়েছে!')
+  alert(t('orderSuccess'))
       
       // Refresh the page to load analytics
       window.location.reload()
@@ -147,15 +152,15 @@ export default function Dashboard() {
       console.error('Error status:', error.response?.status)
       
       if (error.code === 'ECONNREFUSED') {
-        alert('সার্ভারের সাথে সংযোগ হচ্ছে না। অনুগ্রহ করে সার্ভার চালু আছে কিনা চেক করুন।')
+  alert(t('serverConnectionError'))
       } else if (error.response?.status === 401) {
-        alert('আপনার লগইন সেশন শেষ হয়ে গেছে। দয়া করে আবার লগইন করুন।')
+  alert(t('sessionExpired'))
         localStorage.removeItem('token')
         window.location.href = '/auth/login'
       } else if (error.response?.status === 400) {
-        alert(error.response.data.message || 'ওয়েবসাইট তৈরি করতে সমস্যা হয়েছে')
+  alert(error.response.data.message || t('websiteCreateError'))
       } else {
-        alert('ওয়েবসাইট তৈরি করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।')
+  alert(t('websiteCreateError'))
       }
     } finally {
       setIsCreating(false)
@@ -167,18 +172,18 @@ export default function Dashboard() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-center">🌟 ওয়েবসাইট তৈরি করুন</CardTitle>
+            <CardTitle className="text-center">🌟 {t('createWebsite')}</CardTitle>
             <CardDescription className="text-center">
-              মাত্র ১০ সেকেন্ডে আপনার ই-কমার্স ওয়েবসাইট তৈরি করুন
+              {t('createWebsiteDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="websiteName">ওয়েবসাইটের নাম</Label>
+              <Label htmlFor="websiteName">{t('websiteName')}</Label>
               <Input
                 id="websiteName"
                 type="text"
-                placeholder="যেমন: আমার দোকান"
+                placeholder={t('websiteNamePlaceholder')}
                 value={websiteName}
                 onChange={(e) => setWebsiteName(e.target.value)}
                 className="mt-1"
@@ -189,7 +194,7 @@ export default function Dashboard() {
               className="w-full"
               disabled={isCreating}
             >
-              {isCreating ? 'তৈরি হচ্ছে...' : '🚀 ওয়েবসাইট তৈরি করুন'}
+              {isCreating ? t('creating') : `🚀 ${t('createWebsite')}`}
             </Button>
           </CardContent>
         </Card>
@@ -202,7 +207,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">লোড হচ্ছে...</p>
+          <p className="mt-4 text-gray-600">{t('loading')}</p>
         </div>
       </div>
     )
@@ -215,17 +220,17 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">ড্যাশবোর্ড</h1>
-              <p className="text-gray-600">আপনার ব্যবসার সম্পূর্ণ তথ্য এক জায়গায়</p>
+              <h1 className="text-3xl font-bold text-gray-900">{t('dashboard')}</h1>
+              <p className="text-gray-600">{t('dashboardDesc')}</p>
             </div>
             <div className="flex space-x-3">
               {website && (
                 <Button variant="outline" asChild>
-                  <a href={`https://${website.domain}.yourplatform.com`} target="_blank">ওয়েবসাইট দেখুন</a>
+                  <a href={`https://${website.domain}.yourplatform.com`} target="_blank">{t('viewWebsite')}</a>
                 </Button>
               )}
               <Button asChild>
-                <a href="/dashboard/products">প্রোডাক্ট যোগ করুন</a>
+                <a href="/dashboard/products">{t('addProduct')}</a>
               </Button>
             </div>
           </div>
@@ -243,7 +248,7 @@ export default function Dashboard() {
                 <div>
                   <CardTitle className="text-xl">🌐 {website.name}</CardTitle>
                   <CardDescription>
-                    আপনার ওয়েবসাইট সফলভাবে তৈরি হয়েছে এবং চালু আছে
+                    {t('websiteSuccess')}
                   </CardDescription>
                 </div>
                 <Badge variant="secondary" className="bg-green-100 text-green-800">
@@ -255,11 +260,12 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">ওয়েবসাইট ঠিকানা:</p>
+                  <p className="text-sm text-gray-600">{t('websiteAddress')}</p>
                   <p className="font-medium text-blue-600">{website.domain}.yourplatform.com</p>
                 </div>
                 <Button asChild>
                   <a href={`https://${website.domain}.yourplatform.com`} target="_blank">
-                    🚀 ওয়েবসাইট দেখুন
+                    🚀 {t('viewWebsite')}
                   </a>
                 </Button>
               </div>
@@ -271,45 +277,50 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">মোট প্রোডাক্ট</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('totalProducts')}</CardTitle>
               <div className="h-4 w-4 text-blue-600">📦</div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{analytics?.totalProducts || 0}</div>
               <p className="text-xs text-muted-foreground">সক্রিয় প্রোডাক্ট</p>
+              <p className="text-xs text-muted-foreground">{t('activeProducts')}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">মোট অর্ডার</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('totalOrders')}</CardTitle>
               <div className="h-4 w-4 text-green-600">🛒</div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{analytics?.totalOrders || 0}</div>
               <p className="text-xs text-muted-foreground">সম্পূর্ণ অর্ডার</p>
+              <p className="text-xs text-muted-foreground">{t('completedOrders')}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">মোট আয়</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('totalRevenue')}</CardTitle>
               <div className="h-4 w-4 text-yellow-600">💰</div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">৳{analytics?.totalRevenue || 0}</div>
+              <div className="text-2xl font-bold">{formatPrice(analytics?.totalRevenue || 0)}</div>
               <p className="text-xs text-muted-foreground">সর্বমোট বিক্রয়</p>
+              <p className="text-xs text-muted-foreground">{t('totalSales')}</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">মাসিক লাভ</CardTitle>
+            <CardTitle className="text-sm font-medium">{t('monthlyProfit')}</CardTitle>
               <div className="h-4 w-4 text-purple-600">📈</div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">৳{analytics?.monthlyProfit || 0}</div>
+              <div className="text-2xl font-bold">{formatPrice(analytics?.monthlyProfit || 0)}</div>
               <p className="text-xs text-muted-foreground">এই মাসের লাভ</p>
+              <p className="text-xs text-muted-foreground">{t('thisMonthProfit')}</p>
             </CardContent>
           </Card>
         </div>
@@ -317,17 +328,18 @@ export default function Dashboard() {
         {/* Recent Orders */}
         <Card className="mb-8">
           <CardHeader>
-            <CardTitle>সাম্প্রতিক অর্ডার</CardTitle>
+            <CardTitle>{t('recentOrders')}</CardTitle>
             <CardDescription>
-              আপনার সাম্প্রতিক অর্ডারগুলির তালিকা
+              {t('recentOrdersDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             {orders.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-gray-500">কোনো অর্ডার পাওয়া যায়নি</p>
+                <p className="text-gray-500">{t('noOrdersFound')}</p>
                 <Button className="mt-4" asChild>
-                  <a href="/dashboard/products">প্রথম প্রোডাক্ট যোগ করুন</a>
+                  <a href="/dashboard/products">{t('addFirstProduct')}</a>
                 </Button>
               </div>
             ) : (
@@ -337,13 +349,14 @@ export default function Dashboard() {
                     <div className="flex items-center space-x-4">
                       <div>
                         <p className="font-medium">অর্ডার #{order.id}</p>
+                        <p className="font-medium">{t('order')} #{order.id}</p>
                         <p className="text-sm text-gray-500">{order.customerName}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-medium">৳{order.totalAmount}</p>
+                      <p className="font-medium">{formatPrice(order.totalAmount)}</p>
                       <Badge variant={order.status === 'completed' ? 'default' : 'secondary'}>
-                        {order.status === 'completed' ? 'সম্পূর্ণ' : 'প্রক্রিয়াধীন'}
+                        {order.status === 'completed' ? t('completed') : t('processing')}
                       </Badge>
                     </div>
                   </div>
@@ -352,6 +365,7 @@ export default function Dashboard() {
                 <div className="text-center pt-4">
                   <Button variant="outline" asChild>
                     <a href="/dashboard/orders">সব অর্ডার দেখুন</a>
+                    <a href="/dashboard/orders">{t('viewAllOrders')}</a>
                   </Button>
                 </div>
               </div>
@@ -362,31 +376,37 @@ export default function Dashboard() {
         {/* Quick Actions */}
         <Card>
           <CardHeader>
-            <CardTitle>দ্রুত অ্যাকশন</CardTitle>
+            <CardTitle>{t('quickActions')}</CardTitle>
             <CardDescription>
-              সাধারণ কাজগুলো দ্রুত করুন
+              {t('quickActionsDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Button className="h-20 flex flex-col space-y-2" asChild>
                 <a href="/dashboard/products">
-                  <span className="text-lg">📦</span>
-                  <span>প্রোডাক্ট যোগ করুন</span>
+                  <div className="flex flex-col items-center justify-center">
+                    <span className="text-lg">📦</span>
+                    <span>{t('addProduct')}</span>
+                  </div>
                 </a>
               </Button>
               
               <Button variant="outline" className="h-20 flex flex-col space-y-2" asChild>
                 <a href="/dashboard/orders">
-                  <span className="text-lg">🛒</span>
-                  <span>অর্ডার দেখুন</span>
+                  <div className="flex flex-col items-center justify-center">
+                    <span className="text-lg">🛒</span>
+                    <span>{t('viewOrders')}</span>
+                  </div>
                 </a>
               </Button>
               
               <Button variant="outline" className="h-20 flex flex-col space-y-2" asChild>
                 <a href="/dashboard/settings">
-                  <span className="text-lg">⚙️</span>
-                  <span>সেটিংস</span>
+                  <div className="flex flex-col items-center justify-center">
+                    <span className="text-lg">⚙️</span>
+                    <span>{t('settings')}</span>
+                  </div>
                 </a>
               </Button>
             </div>

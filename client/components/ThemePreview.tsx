@@ -1,5 +1,6 @@
 "use client";
 import { useTheme } from "./ThemeContext";
+import { useRegion } from "@/components/RegionContext";
 
 interface ThemePreviewProps {
   products?: any[];
@@ -7,6 +8,7 @@ interface ThemePreviewProps {
 
 export default function ThemePreview({ products }: ThemePreviewProps) {
   const { theme } = useTheme();
+  const { formatPrice } = useRegion();
   
   return (
     <div
@@ -68,7 +70,7 @@ export default function ThemePreview({ products }: ThemePreviewProps) {
                     {product.name}
                   </h3>
                   <p className="font-bold text-lg mb-2" style={{ color: theme.colors.primary }}>
-                    ৳{product.price}
+                    {formatPrice(product.price)}
                   </p>
                   <button
                     className="w-full py-2 px-3 rounded text-sm font-medium"
@@ -153,7 +155,7 @@ export default function ThemePreview({ products }: ThemePreviewProps) {
                     {product.name}
                   </h3>
                   <p className="font-bold text-base" style={{ color: theme.colors.primary }}>
-                    ৳{product.price}
+                    {formatPrice(product.price)}
                   </p>
                   <button
                     className="mt-2 py-1 px-3 rounded text-xs font-medium"

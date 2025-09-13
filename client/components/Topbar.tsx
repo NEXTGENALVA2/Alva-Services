@@ -3,6 +3,7 @@ import { ShoppingCart, Menu, ExternalLink, Copy, LogOut, User } from 'lucide-rea
 import { useCart } from './CartContext';
 import dynamic from 'next/dynamic';
 import { getDomain } from '../lib/domain';
+import CountryRegionSelector from './CountryRegionSelector';
 
 interface TopbarProps {
   setSidebarOpen?: (open: boolean) => void;
@@ -125,6 +126,9 @@ export default function Topbar({ setSidebarOpen }: TopbarProps) {
           <LogOut className="h-4 w-4" />
           <span className="hidden sm:inline">লগআউট</span>
         </button>
+        
+        {/* Country/Region Selector */}
+        <CountryRegionSelector />
         
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center">
           <User className="h-4 w-4 text-slate-600" />

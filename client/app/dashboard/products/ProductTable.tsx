@@ -36,6 +36,8 @@ export interface Product {
   variants?: ProductVariant[];
   details?: ProductDetail[];
   video?: string;
+  deliveryApplied?: boolean;
+  deliveryCharge?: number;
 }
 
 interface ProductTableProps {
@@ -57,6 +59,40 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
   // Helper: Deep clone product (to avoid reference bugs)
 
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+
+  // Delivery settings state (persisted in localStorage)
+  const [deliverySettings, setDeliverySettings] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('deliveryCharge');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          return {
+            insideDhaka: parsed.insideDhaka || 60,
+            outsideDhaka: parsed.outsideDhaka || 120,
+            freeDeliveryMinimum: parsed.freeDeliveryMinimum || 1000,
+            expressDelivery: parsed.expressDelivery || 150
+          };
+        } catch (e) {
+          console.error('Error parsing delivery settings:', e);
+        }
+      }
+    }
+    return {
+      insideDhaka: 60,
+      outsideDhaka: 120,
+      freeDeliveryMinimum: 1000,
+      expressDelivery: 150
+    };
+  });
+
+  // Save delivery settings to localStorage
+  const saveDeliverySettings = (newSettings: any) => {
+    setDeliverySettings(newSettings);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('deliveryCharge', JSON.stringify(newSettings));
+    }
+  };
 
   // Category options state (persisted in localStorage)
   const [categories, setCategories] = useState<string[]>(() => {
@@ -170,6 +206,8 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
         video: editedProduct.video,
         images: editedProduct.images || [], // Ensure images array is sent
         variations: editedProduct.variants || {}, // Map variants to variations for backend
+        deliveryApplied: editedProduct.deliveryApplied || false,
+        deliveryCharge: editedProduct.deliveryCharge || 0,
         isActive: true
       };
 
@@ -628,6 +666,154 @@ export default function ProductTable({ products, setProducts }: ProductTableProp
                       />
                     ) : (
                       <p className="py-2 text-gray-700">{selectedProduct?.video || '-'}</p>
+                    )}
+                  </div>
+
+                  {/* Delivery Charges */}
+                  <div className="mb-6">
+                    <label className="block text-sm font-medium mb-3">Delivery Charges</label>
+                    {isEditing ? (
+                      <div className="space-y-6">
+                        
+                        {/* Global Delivery Settings */}
+                        <div className="bg-gray-50 p-4 rounded-lg">
+                          <h4 className="text-sm font-semibold mb-3 text-gray-700">🌍 Global Delivery Settings (সাধারণ ডেলিভারি সেটিংস)</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-xs font-medium mb-1">Inside Dhaka (ঢাকার ভিতরে) - ৳</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                value={deliverySettings.insideDhaka}
+                                onChange={(e) => saveDeliverySettings({
+                                  ...deliverySettings,
+                                  insideDhaka: parseFloat(e.target.value) || 0
+                                })}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium mb-1">Outside Dhaka (ঢাকার বাইরে) - ৳</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                value={deliverySettings.outsideDhaka}
+                                onChange={(e) => saveDeliverySettings({
+                                  ...deliverySettings,
+                                  outsideDhaka: parseFloat(e.target.value) || 0
+                                })}
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 mt-3">
+                            <div>
+                              <label className="block text-xs font-medium mb-1">Free Delivery Minimum (ফ্রি ডেলিভারি মিনিমাম) - ৳</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                value={deliverySettings.freeDeliveryMinimum}
+                                onChange={(e) => saveDeliverySettings({
+                                  ...deliverySettings,
+                                  freeDeliveryMinimum: parseFloat(e.target.value) || 0
+                                })}
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium mb-1">Express Delivery Extra (এক্সপ্রেস অতিরিক্ত) - ৳</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                value={deliverySettings.expressDelivery}
+                                onChange={(e) => saveDeliverySettings({
+                                  ...deliverySettings,
+                                  expressDelivery: parseFloat(e.target.value) || 0
+                                })}
+                              />
+                            </div>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            এই settings সব product এর জন্য apply হবে। নিচে individual product delivery charge আলাদা করে set করতে পারেন।
+                          </p>
+                        </div>
+
+                        {/* Individual Product Delivery Charge */}
+                        <div className="bg-blue-50 p-4 rounded-lg">
+                          <h4 className="text-sm font-semibold mb-3 text-blue-700">📦 Individual Product Delivery (এই পণ্যের জন্য আলাদা ডেলিভারি)</h4>
+                          <div className="flex items-center mb-3">
+                            <input
+                              type="checkbox"
+                              id="deliveryApplied"
+                              className="mr-2"
+                              checked={editedProduct?.deliveryApplied || false}
+                              onChange={(e) => setEditedProduct({
+                                ...editedProduct!, 
+                                deliveryApplied: e.target.checked,
+                                deliveryCharge: e.target.checked ? (editedProduct?.deliveryCharge || 0) : 0
+                              })}
+                            />
+                            <label htmlFor="deliveryApplied" className="text-sm text-gray-700">
+                              এই পণ্যের জন্য আলাদা ডেলিভারি চার্জ প্রযোজ্য
+                            </label>
+                          </div>
+                          {editedProduct?.deliveryApplied && (
+                            <div>
+                              <label className="block text-sm font-medium mb-1">Individual Product Delivery Charge (৳)</label>
+                              <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                className="w-full border border-gray-300 rounded px-3 py-2"
+                                placeholder="পণ্যের ওজন অনুযায়ী ডেলিভারি চার্জ নির্ধারণ করুন"
+                                value={editedProduct?.deliveryCharge || ''}
+                                onChange={(e) => setEditedProduct({
+                                  ...editedProduct!,
+                                  deliveryCharge: parseFloat(e.target.value) || 0
+                                })}
+                              />
+                              <p className="text-xs text-blue-600 mt-1">
+                                ⚠️ এই চার্জ গ্লোবাল ডেলিভারি চার্জের সাথে যোগ হবে (This charge will be added to global delivery charge)
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                      </div>
+                    ) : (
+                      <div className="py-2 text-gray-700 space-y-2">
+                        {/* Display Global Settings */}
+                        <div className="bg-gray-50 p-3 rounded text-sm">
+                          <div className="font-medium mb-1">Global Delivery Settings:</div>
+                          <div className="text-xs text-gray-600">
+                            Inside Dhaka: ৳{deliverySettings.insideDhaka} | Outside Dhaka: ৳{deliverySettings.outsideDhaka} | 
+                            Free above: ৳{deliverySettings.freeDeliveryMinimum} | Express: +৳{deliverySettings.expressDelivery}
+                          </div>
+                        </div>
+                        
+                        {/* Display Individual Product Settings */}
+                        {selectedProduct?.deliveryApplied ? (
+                          <div className="bg-blue-50 p-3 rounded text-sm">
+                            <span className="inline-flex items-center">
+                              <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs mr-2">
+                                Individual Delivery Charge Applied
+                              </span>
+                              <span className="font-medium">৳{selectedProduct?.deliveryCharge || 0}</span>
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="bg-gray-100 p-3 rounded text-sm">
+                            <span className="text-gray-600 text-xs">
+                              No individual delivery charge - using global settings only
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
 

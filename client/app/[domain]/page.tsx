@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useCart } from '../../components/CartContext';
 import { useTheme } from '../../components/ThemeContext';
+import { useRegion } from '@/components/RegionContext';
 import axios from 'axios';
 import { ShoppingCart, Plus, Minus, Star, Menu, X, Search, Heart, User, Globe } from 'lucide-react';
 
@@ -77,8 +78,9 @@ function CartSidebar({
   updateQuantity, 
   removeFromCart, 
   getTotalPrice, 
+  formatPrice,
   params, 
-  currentLang, 
+  t,
   setShowCart 
 }: {
   cart: CartItem[];
@@ -86,8 +88,9 @@ function CartSidebar({
   updateQuantity: (id: string, quantity: number) => void;
   removeFromCart: (id: string) => void;
   getTotalPrice: () => number;
+  formatPrice: (amount: number) => string;
   params: { domain: string };
-  currentLang: string;
+  t: (key: string) => string;
   setShowCart: (show: boolean) => void;
 }) {
   return (
@@ -96,7 +99,7 @@ function CartSidebar({
       <div className="absolute right-0 top-0 h-full w-96 bg-white shadow-xl">
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b">
-            <h2 className="text-lg font-semibold">{t('cart', currentLang)}</h2>
+            <h2 className="text-lg font-semibold">{t('cart')}</h2>
             <button onClick={() => setShowCart(false)}>
               <X className="h-6 w-6" />
             </button>
@@ -106,7 +109,7 @@ function CartSidebar({
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
                 <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">{t('emptyCart', currentLang)}</p>
+                <p className="text-gray-500">{t('emptyCart')}</p>
               </div>
             </div>
           ) : (
@@ -124,7 +127,7 @@ function CartSidebar({
                       )}
                       <div className="flex-1">
                         <h3 className="font-medium text-gray-900">{item.name}</h3>
-                        <p className="text-sm text-gray-600">{t('currency', currentLang)}{item.price}</p>
+                        <p className="text-sm text-gray-600">{formatPrice(item.price)}</p>
                         <div className="flex items-center gap-2 mt-2">
                           <button
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
@@ -142,7 +145,7 @@ function CartSidebar({
                         </div>
                       </div>
                       <div className="flex flex-col items-end">
-                        <p className="font-semibold text-gray-900">{t('currency', currentLang)}{item.price * item.quantity}</p>
+                        <p className="font-semibold text-gray-900">{formatPrice(item.price * item.quantity)}</p>
                         <button
                           onClick={() => removeFromCart(item.id)}
                           className="text-red-500 hover:text-red-700 text-sm mt-2"
@@ -157,8 +160,8 @@ function CartSidebar({
               
               <div className="border-t p-4">
                 <div className="flex justify-between items-center mb-4">
-                  <span className="text-lg font-semibold">{t('total', currentLang)}:</span>
-                  <span className="text-lg font-bold text-green-600">{t('currency', currentLang)}{getTotalPrice()}</span>
+                  <span className="text-lg font-semibold">{t('total')}:</span>
+                  <span className="text-lg font-bold text-green-600">{formatPrice(getTotalPrice())}</span>
                 </div>
                 <button
                   onClick={() => {
@@ -167,7 +170,7 @@ function CartSidebar({
                   }}
                   className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 transition-colors"
                 >
-                  {t('orderNow', currentLang)}
+                  {t('orderNow')}
                 </button>
               </div>
             </>
@@ -186,90 +189,9 @@ interface CartItem {
   image: string;
 }
 
-// Translation function
-const t = (key: string, lang: string = 'bn'): string => {
-  const translations: Record<string, Record<string, string>> = {
-    bn: {
-      language: 'ভাষা',
-      bangla: 'বাংলা',
-      english: 'English',
-      searchPlaceholder: 'পণ্য খুঁজুন...',
-      allProducts: 'সব পণ্য',
-      cart: 'কার্ট',
-      viewCart: 'কার্ট দেখুন',
-      emptyCart: 'আপনার কার্ট খালি',
-      total: 'মোট',
-      currency: '৳',
-      orderNow: 'অর্ডার করুন',
-      customerInfo: 'গ্রাহকের তথ্য',
-      name: 'নাম',
-      phone: 'ফোন',
-      address: 'ঠিকানা',
-      email: 'ইমেইল',
-      placeOrder: 'অর্ডার দিন',
-      cancel: 'বাতিল',
-      orderSummary: 'অর্ডার সামারি',
-      welcome: 'স্বাগতম',
-      stayWithUs: 'আমাদের সাথে থাকুন',
-      newArrivals: 'নতুন এসেছে',
-      bestSellers: 'বেস্ট সেলার',
-      bestSeller: 'বেস্ট সেলার',
-      addToCart: 'কার্টে যোগ করুন',
-      noProducts: 'কোনো পণ্য পাওয়া যায়নি।',
-      inStock: 'স্টকে আছে',
-      outOfStock: 'স্টক নেই',
-      products: 'টি পণ্য',
-      quantity: 'পরিমাণ',
-      continueShopping: 'কেনাকাটা চালিয়ে যান',
-      websiteNotFound: 'ওয়েবসাইট পাওয়া যায়নি',
-      fillAllFields: 'অনুগ্রহ করে সব তথ্য পূরণ করুন।',
-      orderSuccess: 'অর্ডার সফলভাবে দেওয়া হয়েছে!',
-      orderFailed: 'অর্ডার দিতে ব্যর্থ। আবার চেষ্টা করুন।'
-    },
-    en: {
-      language: 'Language',
-      bangla: 'বাংলা',
-      english: 'English',
-      searchPlaceholder: 'Search products...',
-      allProducts: 'All Products',
-      cart: 'Cart',
-      viewCart: 'View Cart',
-      emptyCart: 'Your cart is empty',
-      total: 'Total',
-      currency: '৳',
-      orderNow: 'Order Now',
-      customerInfo: 'Customer Information',
-      name: 'Name',
-      phone: 'Phone',
-      address: 'Address',
-      email: 'Email',
-      placeOrder: 'Place Order',
-      cancel: 'Cancel',
-      orderSummary: 'Order Summary',
-      welcome: 'Welcome',
-      stayWithUs: 'Stay with us',
-      newArrivals: 'New Arrivals',
-      bestSellers: 'Best Sellers',
-      bestSeller: 'Best Seller',
-      addToCart: 'Add to Cart',
-      noProducts: 'No products found.',
-      inStock: 'In Stock',
-      outOfStock: 'Out of Stock',
-      products: 'products',
-      quantity: 'Quantity',
-      continueShopping: 'Continue Shopping',
-      websiteNotFound: 'Website not found',
-      fillAllFields: 'Please fill all required fields.',
-      orderSuccess: 'Order placed successfully!',
-      orderFailed: 'Failed to place order. Please try again.'
-    }
-  };
-  
-  return translations[lang]?.[key] || key;
-};
-
 export default function Page({ params }: { params: { domain: string } }) {
   const { theme } = useTheme(); // Theme context hook
+  const { formatPrice, currentLanguage, setCurrentLanguage, t } = useRegion(); // Region context hook for currency and language
   const [website, setWebsite] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -280,7 +202,6 @@ export default function Page({ params }: { params: { domain: string } }) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [banner, setBanner] = useState<string>("");
   const [showCheckout, setShowCheckout] = useState(false);
-  const [currentLang, setCurrentLang] = useState('bn');
   const [customerInfo, setCustomerInfo] = useState({
     name: '',
     phone: '',
@@ -289,9 +210,8 @@ export default function Page({ params }: { params: { domain: string } }) {
   });
 
   useEffect(() => {
-    // Load saved language
-    const savedLang = localStorage.getItem('websiteLang') || 'bn';
-    setCurrentLang(savedLang);
+    // Load saved language (now handled by RegionContext)
+    // No need to manually load/save language anymore
     
     // ওয়েবসাইট ও প্রোডাক্ট ডাটা fetch করবে (asynchronous)
     const fetchWebsiteData = async () => {
@@ -300,7 +220,7 @@ export default function Page({ params }: { params: { domain: string } }) {
         console.log('DEBUG: Fetching website data for domain:', params.domain);
         
         const [websiteRes, bannerRes] = await Promise.all([
-          fetch(`http://localhost:5000/api/website/public/${params.domain}`),
+          fetch(`http://localhost:5000/api/websites/public/${params.domain}`),
           axios.get(`http://localhost:5000/api/banner?domain=${params.domain}`).catch(() => null)
         ]);
         
@@ -369,7 +289,9 @@ export default function Page({ params }: { params: { domain: string } }) {
       name: product?.name ?? product?.title ?? 'Product',
       price: Number(product?.price ?? product?.sellingPrice ?? 0) || 0,
       quantity: 1,
-      image: product?.images?.[0] || product?.image || product?.imageUrl || ''
+      image: product?.images?.[0] || product?.image || product?.imageUrl || '',
+      deliveryApplied: Boolean(product?.deliveryApplied),
+      deliveryCharge: Number(product?.deliveryCharge ?? 0) || 0
     };
     
     console.debug('[cart] addToCart via context', pid);
@@ -429,7 +351,7 @@ const getTotalPrice = () => {
 
   const handlePlaceOrder = async () => {
     if (!customerInfo.name || !customerInfo.phone || !customerInfo.address) {
-      alert(t('fillAllFields', currentLang));
+      alert(t('fillAllFields'));
       return;
     }
 
@@ -443,7 +365,7 @@ const getTotalPrice = () => {
       // If no ID found, try to find website by domain
       if (!websiteId) {
         try {
-          const websiteRes = await fetch(`http://localhost:5000/api/website/public/${params.domain}`);
+          const websiteRes = await fetch(`http://localhost:5000/api/websites/public/${params.domain}`);
           if (websiteRes.ok) {
             const websiteData = await websiteRes.json();
             websiteId = websiteData?.website?.id;
@@ -485,7 +407,7 @@ const getTotalPrice = () => {
 
       if (res.ok) {
         const order = await res.json();
-        alert(t('orderSuccess', currentLang));
+        alert(t('orderSuccess'));
         setCart([]);
         setShowCheckout(false);
         setCustomerInfo({ name: '', phone: '', address: '', email: '' });
@@ -495,11 +417,11 @@ const getTotalPrice = () => {
       } else {
         const errorData = await res.text();
         console.error('Order failed:', errorData);
-        alert(t('orderFailed', currentLang) + ' ' + errorData);
+        alert(t('orderFailed') + ' ' + errorData);
       }
     } catch (error) {
       console.error('Order error:', error);
-      alert(t('orderFailed', currentLang));
+      alert(t('orderFailed'));
     }
   };
 
@@ -585,7 +507,7 @@ const getTotalPrice = () => {
   if (!website) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
-        <h1 className="text-3xl font-bold text-red-600 mb-4">{t('websiteNotFound', currentLang)}</h1>
+        <h1 className="text-3xl font-bold text-red-600 mb-4">{t('websiteNotFound')}</h1>
         <p className="text-gray-700">আপনার দেওয়া ঠিকানায় কোনো ওয়েবসাইট নেই।</p>
       </div>
     );
@@ -610,7 +532,7 @@ const getTotalPrice = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                 <input
                   type="text"
-                  placeholder={t('searchPlaceholder', currentLang)}
+                  placeholder={t('searchPlaceholder')}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:border-transparent"
                   style={{ 
                     borderColor: theme.colors.primary + '30',
@@ -626,24 +548,6 @@ const getTotalPrice = () => {
 
             {/* Right icons */}
             <div className="flex items-center space-x-4">
-              {/* Language Switcher */}
-              <select
-                value={currentLang}
-                onChange={(e) => {
-                  setCurrentLang(e.target.value);
-                  localStorage.setItem('websiteLang', e.target.value);
-                }}
-                className="border rounded px-2 py-1 text-sm"
-                style={{ 
-                  borderColor: theme.colors.primary,
-                  backgroundColor: theme.colors.background,
-                  color: theme.colors.text
-                }}
-              >
-                <option value="bn">বাংলা</option>
-                <option value="en">English</option>
-              </select>
-              
               <Heart className="h-6 w-6 text-gray-600 cursor-pointer hover:text-red-500" />
               <User className="h-6 w-6 text-gray-600 cursor-pointer hover:text-blue-500" />
               <button
@@ -685,7 +589,7 @@ const getTotalPrice = () => {
                 color: selectedCategory === 'all' ? theme.colors.primary : theme.colors.text
               }}
             >
-              {t('allProducts', currentLang)}
+              {t('allProducts')}
             </button>
             
             {Object.keys(categoryStructure).map(category => (
@@ -752,7 +656,7 @@ const getTotalPrice = () => {
         {newArrivals.length > 0 && (
           <section className="mb-12">
             <h2 className="text-2xl font-bold mb-6" style={{ color: theme.colors.primary }}>
-              {t('newArrivals', currentLang)}
+              {t('newArrivals')}
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {newArrivals.map(product => (
@@ -778,14 +682,14 @@ const getTotalPrice = () => {
                       {product.name}
                     </h3>
                     <p className="text-lg font-bold mb-3" style={{ color: theme.colors.primary }}>
-                      {t('currency', currentLang)}{product.price}
+                      {formatPrice(product.price)}
                     </p>
                     <button
                       onClick={e => { e.stopPropagation(); addToCart(product); }}
                       className="w-full text-white py-2 px-4 rounded-md hover:opacity-90 transition-opacity mb-2"
                       style={{ backgroundColor: theme.colors.primary }}
                     >
-                      {t('addToCart', currentLang)}
+                      {t('addToCart')}
                     </button>
                     <button
                       onClick={e => {
@@ -809,7 +713,7 @@ const getTotalPrice = () => {
         {bestSellers.length > 0 && (
           <section className="mb-12">
             <h2 className="text-2xl font-bold mb-6" style={{ color: theme.colors.primary }}>
-              {t('bestSellers', currentLang)}
+              {t('bestSellers')}
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {bestSellers.map(product => (
@@ -820,7 +724,7 @@ const getTotalPrice = () => {
                   onClick={() => window.location.href = `/${params.domain}/products/${product.id}`}
                 >
                   <div className="absolute top-2 left-2 text-white text-xs px-2 py-1 rounded" style={{ backgroundColor: theme.colors.primary }}>
-                    {t('bestSeller', currentLang)}
+                    {t('bestSeller')}
                   </div>
                   {product.images?.[0] && (
                     <img
@@ -838,14 +742,14 @@ const getTotalPrice = () => {
                       {product.name}
                     </h3>
                     <p className="text-lg font-bold mb-3" style={{ color: theme.colors.primary }}>
-                      {t('currency', currentLang)}{product.price}
+                      {formatPrice(product.price)}
                     </p>
                     <button
                       onClick={e => { e.stopPropagation(); addToCart(product); }}
                       className="w-full text-white py-2 px-4 rounded-md hover:opacity-90 transition-opacity mb-2"
                       style={{ backgroundColor: theme.colors.primary }}
                     >
-                      {t('addToCart', currentLang)}
+                      {t('addToCart')}
                     </button>
                     <button
                       onClick={e => {
@@ -868,12 +772,12 @@ const getTotalPrice = () => {
         {/* All Products */}
         <section>
           <h2 className="text-2xl font-bold mb-6" style={{ color: theme.colors.primary }}>
-            {selectedCategory === 'all' ? t('allProducts', currentLang) : selectedCategory}
+            {selectedCategory === 'all' ? t('allProducts') : selectedCategory}
           </h2>
           {filteredProducts.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-lg" style={{ color: theme.colors.text }}>
-                {t('noProducts', currentLang)}
+                {t('noProducts')}
               </div>
             </div>
           ) : (
@@ -901,10 +805,10 @@ const getTotalPrice = () => {
                       <p className="text-gray-600 text-sm mb-2 line-clamp-2">{product.description}</p>
                     )}
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-lg font-bold text-green-600">{t('currency', currentLang)}{product.price}</span>
+                      <span className="text-lg font-bold text-green-600">{formatPrice(product.price)}</span>
                       {product.stock !== undefined && (
                         <span className={`text-sm ${product.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          {product.stock > 0 ? `${t('inStock', currentLang)} (${product.stock})` : t('outOfStock', currentLang)}
+                          {product.stock > 0 ? `${t('inStock')} (${product.stock})` : t('outOfStock')}
                         </span>
                       )}
                     </div>
@@ -913,7 +817,7 @@ const getTotalPrice = () => {
                       disabled={product.stock === 0}
                       className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed mb-2"
                     >
-                      {t('addToCart', currentLang)}
+                      {t('addToCart')}
                     </button>
                     <button
                       onClick={e => {
@@ -944,8 +848,9 @@ const getTotalPrice = () => {
           updateQuantity={updateQuantity}
           removeFromCart={removeFromCart}
           getTotalPrice={getTotalPrice}
+          formatPrice={formatPrice}
           params={params}
-          currentLang={currentLang}
+          t={t}
           setShowCart={setShowCart}
         />
       )}
@@ -957,11 +862,11 @@ const getTotalPrice = () => {
             <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowCheckout(false)} />
             <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
               <div className="p-6">
-                <h2 className="text-xl font-semibold mb-4">{t('customerInfo', currentLang)}</h2>
+                <h2 className="text-xl font-semibold mb-4">{t('customerInfo')}</h2>
                 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('name', currentLang)} *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('name')} *</label>
                     <input
                       type="text"
                       required
@@ -972,7 +877,7 @@ const getTotalPrice = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone', currentLang)} *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')} *</label>
                     <input
                       type="tel"
                       required
@@ -983,7 +888,7 @@ const getTotalPrice = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('address', currentLang)} *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('address')} *</label>
                     <textarea
                       required
                       rows={3}
@@ -994,7 +899,7 @@ const getTotalPrice = () => {
                   </div>
                   
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('email', currentLang)} ({currentLang === 'bn' ? 'ঐচ্ছিক' : 'Optional'})</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')} ({currentLanguage === 'bn' ? 'ঐচ্ছিক' : 'Optional'})</label>
                     <input
                       type="email"
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -1004,19 +909,19 @@ const getTotalPrice = () => {
                   </div>
                   
                   <div className="bg-gray-50 p-4 rounded-md">
-                    <h3 className="font-medium mb-2">{currentLang === 'bn' ? 'অর্ডার সারাংশ' : 'Order Summary'}</h3>
+                    <h3 className="font-medium mb-2">{currentLanguage === 'bn' ? 'অর্ডার সারাংশ' : 'Order Summary'}</h3>
                     {cart.map(item => (
                       <div key={item.id} className="flex justify-between text-sm">
                         <span>{item.name} x {item.quantity}</span>
-                        <span>{t('currency', currentLang)}{item.price * item.quantity}</span>
+                        <span>{formatPrice(item.price * item.quantity)}</span>
                       </div>
                     ))}
                     <div className="border-t pt-2 mt-2">
                       <div className="flex justify-between font-semibold">
-                        <span>{t('total', currentLang)}:</span>
-                        <span>{t('currency', currentLang)}{getTotalPrice()}</span>
+                        <span>{t('total')}:</span>
+                        <span>{formatPrice(getTotalPrice())}</span>
                       </div>
-                      <p className="text-sm text-gray-600 mt-1">{currentLang === 'bn' ? 'পেমেন্ট: ক্যাশ অন ডেলিভারি' : 'Payment: Cash on Delivery'}</p>
+                      <p className="text-sm text-gray-600 mt-1">{currentLanguage === 'bn' ? 'পেমেন্ট: ক্যাশ অন ডেলিভারি' : 'Payment: Cash on Delivery'}</p>
                     </div>
                   </div>
                 </div>
@@ -1026,13 +931,13 @@ const getTotalPrice = () => {
                     onClick={() => setShowCheckout(false)}
                     className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                   >
-                    {currentLang === 'bn' ? 'বাতিল' : 'Cancel'}
+                    {currentLanguage === 'bn' ? 'বাতিল' : 'Cancel'}
                   </button>
                   <button
                     onClick={handlePlaceOrder}
                     className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
                   >
-                    {t('placeOrder', currentLang)}
+                    {t('placeOrder')}
                   </button>
                 </div>
               </div>
@@ -1048,7 +953,7 @@ const getTotalPrice = () => {
           <div className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl">
             <div className="p-4">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold">{currentLang === 'bn' ? 'মেনু' : 'Menu'}</h2>
+                <h2 className="text-lg font-semibold">{currentLanguage === 'bn' ? 'মেনু' : 'Menu'}</h2>
                 <button onClick={() => setShowMobileMenu(false)}>
                   <X className="h-6 w-6" />
                 </button>
@@ -1068,7 +973,7 @@ const getTotalPrice = () => {
                         : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
-                    {category === 'all' ? t('allProducts', currentLang) : category}
+                    {category === 'all' ? t('allProducts') : category}
                   </button>
                 ))}
               </div>
@@ -1078,7 +983,7 @@ const getTotalPrice = () => {
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
                   <input
                     type="text"
-                    placeholder={t('searchPlaceholder', currentLang)}
+                    placeholder={t('searchPlaceholder')}
                     className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}

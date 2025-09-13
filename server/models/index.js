@@ -60,6 +60,7 @@ const Product = sequelize.define('Product', {
   unit: DataTypes.STRING,
   warranty: DataTypes.STRING,
   deliveryApplied: { type: DataTypes.BOOLEAN, defaultValue: true },
+  deliveryCharge: { type: DataTypes.DECIMAL(10, 2), defaultValue: 0 },
   websiteId: { type: DataTypes.UUID, allowNull: false, references: { model: 'Websites', key: 'id' } },
   isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
 });
