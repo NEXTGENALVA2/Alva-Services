@@ -147,7 +147,9 @@ Order.hasMany(OrderItem, { foreignKey: 'orderId' });
 OrderItem.belongsTo(Order, { foreignKey: 'orderId' });
 
 Product.hasMany(OrderItem, { foreignKey: 'productId' });
+OrderItem.belongsTo(Order, { foreignKey: 'orderId' });
 OrderItem.belongsTo(Product, { foreignKey: 'productId' });
+Product.hasMany(OrderItem, { foreignKey: 'productId' });
 
 User.hasMany(Subscription, { foreignKey: 'userId' });
 Subscription.belongsTo(User, { foreignKey: 'userId' });
