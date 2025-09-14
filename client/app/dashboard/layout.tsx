@@ -16,6 +16,7 @@ import {
 import Sidebar from '../../components/Sidebar'
 import Topbar from '../../components/Topbar'
 import SubscriptionWarning from '../../components/SubscriptionWarning'
+import { NotificationProvider, useNotification } from '../../contexts/NotificationContext'
 
 // Simple translation function
 const t = (key: string): string => {
@@ -40,7 +41,7 @@ const t = (key: string): string => {
   return fallback[key] || key;
 };
 
-export default function DashboardLayout({
+function DashboardContent({
   children,
 }: {
   children: React.ReactNode
@@ -48,6 +49,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [showWarning, setShowWarning] = useState(false)
+  const { pendingOrdersCount } = useNotification()
 
   useEffect(() => {
     setMounted(true);
@@ -68,7 +70,7 @@ export default function DashboardLayout({
   const navigation = [
     { name: mounted ? t('dashboard') : 'ড্যাশবোর্ড', href: '/dashboard', icon: LayoutDashboard },
     { name: mounted ? t('products') : 'প্রোডাক্ট', href: '/dashboard/products', icon: Package },
-    { name: mounted ? t('orders') : 'অর্ডার', href: '/dashboard/orders', icon: ShoppingCart },
+    { name: mounted ? t('orders') : 'অর্ডার', href: '/dashboard/orders', icon: ShoppingCart, badge: pendingOrdersCount },
     { name: mounted ? t('analytics') : 'অ্যানালিটিক্স', href: '/dashboard/analytics', icon: BarChart3 },
     { name: mounted ? t('customization') : 'কাস্টমাইজেশন', href: '/dashboard/customization', icon: Palette },
     { name: mounted ? t('settings') : 'সেটিংস', href: '/dashboard/settings', icon: Settings },
@@ -101,5 +103,17 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+  )
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <NotificationProvider>
+      <DashboardContent>{children}</DashboardContent>
+    </NotificationProvider>
   )
 }

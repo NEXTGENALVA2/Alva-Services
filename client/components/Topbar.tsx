@@ -4,6 +4,10 @@ import { useCart } from './CartContext';
 import dynamic from 'next/dynamic';
 import { getDomain } from '../lib/domain';
 import CountryRegionSelector from './CountryRegionSelector';
+import OrderNotificationSystem from './OrderNotificationSystem';
+import { useOrderNotifications } from '../hooks/useOrderNotifications';
+import { useNotification } from '../contexts/NotificationContext';
+import axios from 'axios';
 
 interface TopbarProps {
   setSidebarOpen?: (open: boolean) => void;
@@ -12,6 +16,33 @@ interface TopbarProps {
 export default function Topbar({ setSidebarOpen }: TopbarProps) {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [mounted, setMounted] = useState(false);
+  const { refreshPendingOrders } = useNotification();
+
+  // Use order notifications hook
+  const { isPolling } = useOrderNotifications({
+    onNewOrder: (order) => {
+      console.log('New order received in topbar:', order)
+      // Refresh pending orders count
+      refreshPendingOrders()
+    }
+  });
+
+  // Function to handle order confirmation
+  const handleOrderConfirmation = async (orderId: number) => {
+    try {
+      const token = localStorage.getItem('token')
+      await axios.put(`http://localhost:5000/api/orders/${orderId}/status`, {
+        status: 'confirmed'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      console.log('Order confirmed:', orderId)
+      // Refresh pending orders count after confirmation
+      refreshPendingOrders()
+    } catch (error) {
+      console.error('Error confirming order:', error)
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -62,6 +93,17 @@ export default function Topbar({ setSidebarOpen }: TopbarProps) {
       </div>
       
       <div className="flex items-center gap-2 sm:gap-4">
+        {/* Order Notifications */}
+        <OrderNotificationSystem onConfirmOrder={handleOrderConfirmation} />
+        
+        {/* Live Status Indicator */}
+        {isPolling && (
+          <div className="flex items-center space-x-1 bg-green-50 px-2 py-1 rounded-md">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            <span className="text-xs text-green-700">লাইভ</span>
+          </div>
+        )}
+        
         {mounted && websiteUrl && (
           <a
             href={websiteUrl}

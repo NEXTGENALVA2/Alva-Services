@@ -42,6 +42,7 @@ export default function Dashboard() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [websiteName, setWebsiteName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -82,13 +83,30 @@ export default function Dashboard() {
         const analyticsRes = await axios.get('http://localhost:5000/api/analytics', {
           headers: { Authorization: `Bearer ${token}` }
         })
-        setAnalytics(analyticsRes.data)
+        
+        // Fetch products directly to get accurate count
+        const productsRes = await axios.get('http://localhost:5000/api/products', {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        
+        // Override the totalProducts count with actual products count
+        const actualAnalytics = {
+          ...analyticsRes.data,
+          totalProducts: productsRes.data.length
+        }
+        
+        setAnalytics(actualAnalytics)
+        console.log('Analytics with corrected product count:', actualAnalytics)
 
         // Fetch orders
         const ordersRes = await axios.get(`http://localhost:5000/api/orders?websiteId=${user.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         })
         setOrders(ordersRes.data)
+        
+        // Count pending orders
+        const pending = ordersRes.data.filter((order: any) => order.status === 'pending' || order.status === 'processing').length
+        setPendingOrdersCount(pending)
 
         // Set domain from previously fetched data
         setDomain(domainData?.domain || '')
@@ -275,52 +293,56 @@ export default function Dashboard() {
 
         {/* Analytics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
+          <Card className="relative overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t('totalProducts')}</CardTitle>
               <div className="h-4 w-4 text-blue-600">📦</div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{analytics?.totalProducts || 0}</div>
-              <p className="text-xs text-muted-foreground">সক্রিয় প্রোডাক্ট</p>
+              <div className="text-2xl font-bold text-blue-600">{analytics?.totalProducts || 0}</div>
               <p className="text-xs text-muted-foreground">{t('activeProducts')}</p>
+              <div className="absolute bottom-0 right-0 w-16 h-16 bg-blue-100 rounded-full -mr-8 -mb-8 opacity-20"></div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="relative overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t('totalOrders')}</CardTitle>
               <div className="h-4 w-4 text-green-600">🛒</div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{analytics?.totalOrders || 0}</div>
-              <p className="text-xs text-muted-foreground">সম্পূর্ণ অর্ডার</p>
+              <div className="text-2xl font-bold text-green-600">{analytics?.totalOrders || 0}</div>
               <p className="text-xs text-muted-foreground">{t('completedOrders')}</p>
+              {pendingOrdersCount > 0 && (
+                <Badge variant="secondary" className="mt-1 bg-orange-100 text-orange-800">
+                  {pendingOrdersCount} টি অপেক্ষারত
+                </Badge>
+              )}
+              <div className="absolute bottom-0 right-0 w-16 h-16 bg-green-100 rounded-full -mr-8 -mb-8 opacity-20"></div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="relative overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t('totalRevenue')}</CardTitle>
               <div className="h-4 w-4 text-yellow-600">💰</div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatPrice(analytics?.totalRevenue || 0)}</div>
-              <p className="text-xs text-muted-foreground">সর্বমোট বিক্রয়</p>
+              <div className="text-2xl font-bold text-yellow-600">{formatPrice(analytics?.totalRevenue || 0)}</div>
               <p className="text-xs text-muted-foreground">{t('totalSales')}</p>
+              <div className="absolute bottom-0 right-0 w-16 h-16 bg-yellow-100 rounded-full -mr-8 -mb-8 opacity-20"></div>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="relative overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">মাসিক লাভ</CardTitle>
-            <CardTitle className="text-sm font-medium">{t('monthlyProfit')}</CardTitle>
+              <CardTitle className="text-sm font-medium">{t('monthlyProfit')}</CardTitle>
               <div className="h-4 w-4 text-purple-600">📈</div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatPrice(analytics?.monthlyProfit || 0)}</div>
-              <p className="text-xs text-muted-foreground">এই মাসের লাভ</p>
+              <div className="text-2xl font-bold text-purple-600">{formatPrice(analytics?.monthlyProfit || 0)}</div>
               <p className="text-xs text-muted-foreground">{t('thisMonthProfit')}</p>
+              <div className="absolute bottom-0 right-0 w-16 h-16 bg-purple-100 rounded-full -mr-8 -mb-8 opacity-20"></div>
             </CardContent>
           </Card>
         </div>
@@ -336,7 +358,6 @@ export default function Dashboard() {
           <CardContent>
             {orders.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-gray-500">কোনো অর্ডার পাওয়া যায়নি</p>
                 <p className="text-gray-500">{t('noOrdersFound')}</p>
                 <Button className="mt-4" asChild>
                   <a href="/dashboard/products">{t('addFirstProduct')}</a>
@@ -348,7 +369,6 @@ export default function Dashboard() {
                   <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center space-x-4">
                       <div>
-                        <p className="font-medium">অর্ডার #{order.id}</p>
                         <p className="font-medium">{t('order')} #{order.id}</p>
                         <p className="text-sm text-gray-500">{order.customerName}</p>
                       </div>
@@ -364,7 +384,6 @@ export default function Dashboard() {
                 
                 <div className="text-center pt-4">
                   <Button variant="outline" asChild>
-                    <a href="/dashboard/orders">সব অর্ডার দেখুন</a>
                     <a href="/dashboard/orders">{t('viewAllOrders')}</a>
                   </Button>
                 </div>

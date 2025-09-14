@@ -2,11 +2,13 @@ import React, { Dispatch, SetStateAction } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LucideIcon, X } from 'lucide-react';
+import { Badge } from './ui/badge';
 
 interface NavigationItem {
   name: string;
   href: string;
   icon: LucideIcon;
+  badge?: number;
 }
 
 interface SidebarProps {
@@ -54,17 +56,24 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, navigation }: Sid
               <li key={item.href}>
                 <Link 
                   href={item.href} 
-                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-200 ${
+                  className={`group flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-200 ${
                     isActive 
                       ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 shadow-sm border border-blue-100' 
                       : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                   }`}
                   onClick={() => setSidebarOpen(false)} // Close sidebar on mobile after navigation
                 >
-                  <Icon className={`h-5 w-5 transition-transform duration-200 ${
-                    isActive ? 'scale-110' : 'group-hover:scale-105'
-                  }`} />
-                  {item.name}
+                  <div className="flex items-center gap-3">
+                    <Icon className={`h-5 w-5 transition-transform duration-200 ${
+                      isActive ? 'scale-110' : 'group-hover:scale-105'
+                    }`} />
+                    {item.name}
+                  </div>
+                  {item.badge && item.badge > 0 && (
+                    <Badge variant="destructive" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                      {item.badge}
+                    </Badge>
+                  )}
                 </Link>
               </li>
             );
