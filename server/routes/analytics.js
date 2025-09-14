@@ -67,7 +67,7 @@ router.get('/', authMiddleware, async (req, res) => {
       totalOrders = 0;
     }
 
-    // Revenue calculations
+    // Revenue calculations - Only count delivered/completed orders
     let totalRevenue = 0;
     let monthlyRevenue = 0;
     
@@ -75,23 +75,61 @@ router.get('/', authMiddleware, async (req, res) => {
       totalRevenue = await Order.sum('totalAmount', {
         where: {
           websiteId: website.id,
-          paymentStatus: 'paid'
+          status: 'delivered' // Only count delivered orders
         }
       }) || 0;
+      console.log('DEBUG: Total revenue (delivered orders only):', totalRevenue);
 
       monthlyRevenue = await Order.sum('totalAmount', {
         where: {
           websiteId: website.id,
-          paymentStatus: 'paid',
+          status: 'delivered', // Only count delivered orders
           createdAt: { [Op.gte]: startOfMonth }
         }
       }) || 0;
+      console.log('DEBUG: Monthly revenue (delivered orders only):', monthlyRevenue);
     } catch (revenueError) {
       console.error('DEBUG: Error calculating revenue:', revenueError);
     }
 
-    // Calculate profit (assuming 30% profit margin)
-    const monthlyProfit = monthlyRevenue * 0.3;
+    // Calculate actual profit based on product costs
+    let monthlyProfit = 0;
+    try {
+      // Get all delivered orders with their items for this month
+      const deliveredOrders = await Order.findAll({
+        where: {
+          websiteId: website.id,
+          status: 'delivered',
+          createdAt: { [Op.gte]: startOfMonth }
+        },
+        include: [{
+          model: OrderItem,
+          include: [Product]
+        }]
+      });
+
+      // Calculate actual profit by subtracting product costs
+      for (const order of deliveredOrders) {
+        for (const item of order.OrderItems) {
+          const product = item.Product;
+          if (product && product.buyPrice) {
+            const sellPrice = item.price;
+            const costPrice = product.buyPrice;
+            const itemProfit = (sellPrice - costPrice) * item.quantity;
+            monthlyProfit += itemProfit;
+          } else {
+            // Fallback to 30% margin if no cost price available
+            monthlyProfit += (item.price * item.quantity * 0.3);
+          }
+        }
+      }
+      
+      console.log('DEBUG: Monthly profit (calculated from actual costs):', monthlyProfit);
+    } catch (profitError) {
+      console.error('DEBUG: Error calculating profit:', profitError);
+      // Fallback to simple calculation
+      monthlyProfit = monthlyRevenue * 0.3;
+    }
 
     const response = {
       totalProducts,
@@ -140,24 +178,53 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
       }
     });
 
-    // Revenue calculations
+    // Revenue calculations - Only count delivered orders
     const totalRevenue = await Order.sum('totalAmount', {
       where: {
         websiteId: website.id,
-        paymentStatus: 'paid'
+        status: 'delivered'
       }
     }) || 0;
 
     const monthlyRevenue = await Order.sum('totalAmount', {
       where: {
         websiteId: website.id,
-        paymentStatus: 'paid',
+        status: 'delivered',
         createdAt: { [Op.gte]: startOfMonth }
       }
     }) || 0;
 
-    // Calculate profit (assuming 30% profit margin)
-    const monthlyProfit = monthlyRevenue * 0.3;
+    // Calculate actual profit based on product costs
+    let monthlyProfit = 0;
+    try {
+      const deliveredOrders = await Order.findAll({
+        where: {
+          websiteId: website.id,
+          status: 'delivered',
+          createdAt: { [Op.gte]: startOfMonth }
+        },
+        include: [{
+          model: OrderItem,
+          include: [Product]
+        }]
+      });
+
+      for (const order of deliveredOrders) {
+        for (const item of order.OrderItems) {
+          const product = item.Product;
+          if (product && product.buyPrice) {
+            const sellPrice = item.price;
+            const costPrice = product.buyPrice;
+            const itemProfit = (sellPrice - costPrice) * item.quantity;
+            monthlyProfit += itemProfit;
+          } else {
+            monthlyProfit += (item.price * item.quantity * 0.3);
+          }
+        }
+      }
+    } catch (profitError) {
+      monthlyProfit = monthlyRevenue * 0.3;
+    }
 
     // Recent orders
     const recentOrders = await Order.findAll({

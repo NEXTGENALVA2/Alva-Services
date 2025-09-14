@@ -644,7 +644,18 @@ export default function OrdersPage() {
         setOrders(orders.map(order => 
           order.id === orderId ? { ...order, status: newStatus } : order
         ));
-        alert('অর্ডার স্ট্যাটাস আপডেট হয়েছে!');
+        
+        // Show special message when order is delivered (affects revenue)
+        if (newStatus === 'delivered') {
+          alert('✅ অর্ডার ডেলিভার হয়েছে! রেভিনিউ এবং প্রফিট আপডেট হবে।');
+          
+          // Trigger a custom event to refresh dashboard analytics
+          window.dispatchEvent(new CustomEvent('orderDelivered', { 
+            detail: { orderId, status: newStatus } 
+          }));
+        } else {
+          alert('অর্ডার স্ট্যাটাস আপডেট হয়েছে!');
+        }
       } else {
         alert('অর্ডার আপডেট করতে সমস্যা হয়েছে।');
       }

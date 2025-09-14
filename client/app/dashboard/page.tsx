@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [websiteName, setWebsiteName] = useState('')
   const [isCreating, setIsCreating] = useState(false)
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0)
+  const [analyticsUpdated, setAnalyticsUpdated] = useState(false)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -118,6 +119,24 @@ export default function Dashboard() {
     }
 
     fetchData()
+
+    // Listen for order delivery events to refresh analytics
+    const handleOrderDelivered = () => {
+      console.log('Order delivered - refreshing analytics...')
+      setAnalyticsUpdated(true)
+      fetchData()
+      
+      // Remove the update indicator after 3 seconds
+      setTimeout(() => {
+        setAnalyticsUpdated(false)
+      }, 3000)
+    }
+
+    window.addEventListener('orderDelivered', handleOrderDelivered)
+
+    return () => {
+      window.removeEventListener('orderDelivered', handleOrderDelivered)
+    }
   }, [])
 
   const createWebsite = async () => {
@@ -322,7 +341,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden">
+          <Card className={`relative overflow-hidden ${analyticsUpdated ? 'ring-2 ring-yellow-400 bg-yellow-50' : ''}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t('totalRevenue')}</CardTitle>
               <div className="h-4 w-4 text-yellow-600">💰</div>
@@ -330,11 +349,14 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold text-yellow-600">{formatPrice(analytics?.totalRevenue || 0)}</div>
               <p className="text-xs text-muted-foreground">{t('totalSales')}</p>
+              {analyticsUpdated && (
+                <p className="text-xs text-green-600 font-medium">✅ আপডেট হয়েছে!</p>
+              )}
               <div className="absolute bottom-0 right-0 w-16 h-16 bg-yellow-100 rounded-full -mr-8 -mb-8 opacity-20"></div>
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden">
+          <Card className={`relative overflow-hidden ${analyticsUpdated ? 'ring-2 ring-purple-400 bg-purple-50' : ''}`}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">{t('monthlyProfit')}</CardTitle>
               <div className="h-4 w-4 text-purple-600">📈</div>
@@ -342,6 +364,9 @@ export default function Dashboard() {
             <CardContent>
               <div className="text-2xl font-bold text-purple-600">{formatPrice(analytics?.monthlyProfit || 0)}</div>
               <p className="text-xs text-muted-foreground">{t('thisMonthProfit')}</p>
+              {analyticsUpdated && (
+                <p className="text-xs text-green-600 font-medium">✅ আপডেট হয়েছে!</p>
+              )}
               <div className="absolute bottom-0 right-0 w-16 h-16 bg-purple-100 rounded-full -mr-8 -mb-8 opacity-20"></div>
             </CardContent>
           </Card>
