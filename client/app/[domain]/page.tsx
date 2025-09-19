@@ -8,30 +8,69 @@ import axios from 'axios';
 import { ShoppingCart, Plus, Minus, Star, Menu, X, Search, Heart, User, Globe } from 'lucide-react';
 
 function BannerSlider({ domain }: { domain: string }) {
+  console.log('🎬 BannerSlider component rendered with domain:', domain);
+  
   const [banners, setBanners] = useState<any[]>([]);
   const [current, setCurrent] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string>('');
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchBanners = () => {
+    console.log('🌐 Fetching banners for domain:', domain);
+    setLoading(true);
+    setError('');
     
     fetch(`http://localhost:5000/api/banner?domain=${domain}`)
-      .then(res => res.json())
+      .then(res => {
+        console.log('📡 Banner API response status:', res.status);
+        return res.json();
+      })
       .then(data => {
-        if (isMounted) {
-          // Filter only valid imageUrl
-          const valid = (Array.isArray(data) ? data : data ? [data] : []).filter(b => b && b.imageUrl && b.imageUrl !== 'null');
-          setBanners(valid);
-        }
+        console.log('📸 Banner API response data:', data);
+        // Filter only valid imageUrl
+        const valid = (Array.isArray(data) ? data : data ? [data] : []).filter(b => b && b.imageUrl && b.imageUrl !== 'null');
+        console.log('✅ Valid banners found:', valid.length, valid);
+        setBanners(valid);
+        setLoading(false);
       })
       .catch(error => {
-        if (isMounted) {
-          console.error('Banner fetch error:', error);
-          setBanners([]);
-        }
+        console.error('❌ Banner fetch error:', error);
+        setError('Failed to load banners');
+        setBanners([]);
+        setLoading(false);
       });
-      
+  };
+
+  useEffect(() => {
+    fetchBanners();
+    
+    // Listen for banner updates from customization page (cross-tab communication)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'bannerUpdateTrigger') {
+        console.log('🔄 Banner update detected via localStorage change, refetching banners...');
+        setTimeout(() => {
+          console.log('⏰ Timeout completed, calling fetchBanners...');
+          fetchBanners();
+        }, 1000);
+      }
+    };
+    
+    const handleBannerUpdate = () => {
+      console.log('🔄 Banner update event received, refetching banners...');
+      setTimeout(() => {
+        console.log('⏰ Timeout completed, calling fetchBanners...');
+        fetchBanners();
+      }, 1000);
+    };
+    
+    console.log('🎧 Adding banner update event listeners...');
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('bannerUpdated', handleBannerUpdate);
+    
     return () => {
-      isMounted = false;
+      console.log('🚮 Removing banner update event listeners...');
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('bannerUpdated', handleBannerUpdate);
     };
   }, [domain]);
 
@@ -46,7 +85,47 @@ function BannerSlider({ domain }: { domain: string }) {
     }
   }, [banners]);
 
-  if (!banners.length) return null;
+  if (loading) {
+    return (
+      <div className="relative h-64 md:h-96 overflow-hidden bg-gray-200 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+          <p className="text-gray-600">Loading banners...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="relative h-64 md:h-96 overflow-hidden bg-red-100 flex items-center justify-center">
+        <div className="text-center text-red-600">
+          <p className="font-semibold">Banner Error</p>
+          <p className="text-sm">{error}</p>
+          <button 
+            onClick={fetchBanners}
+            className="mt-2 px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!banners.length) {
+    // Show default banner when no custom banners
+    return (
+      <div className="relative h-64 md:h-96 overflow-hidden bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+        <div className="text-center text-white">
+          <h2 className="text-2xl md:text-4xl font-bold mb-2">বিশেষ অফার!</h2>
+          <p className="text-lg md:text-xl">৫০% পর্যন্ত ছাড়</p>
+          <p className="text-sm mt-2 opacity-75">Upload a banner from customization to replace this</p>
+          <p className="text-xs mt-1 opacity-50">Domain: {domain} | Banners: 0</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-64 md:h-96 overflow-hidden bg-gray-200">
@@ -56,15 +135,43 @@ function BannerSlider({ domain }: { domain: string }) {
         className="w-full h-full object-cover transition-all duration-700"
         loading="lazy"
         onError={(e) => {
+          console.log('❌ Banner image failed to load:', banners[current].imageUrl);
           (e.target as HTMLImageElement).style.display = 'none';
         }}
+        onLoad={() => {
+          console.log('✅ Banner image loaded:', banners[current].imageUrl);
+        }}
       />
-      {banners.length > 1 && (
-        <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-2">
-          {banners.map((_, i) => (
-            <span key={i} className={`w-3 h-3 rounded-full ${i === current ? 'bg-white' : 'bg-gray-400'}`}></span>
-          ))}
+      
+      {/* Banner overlay with content */}
+      <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
+        <div className="text-center text-white">
+          <h2 className="text-xl md:text-3xl font-bold mb-2 drop-shadow-lg">বিশেষ অফার!</h2>
+          <p className="text-lg md:text-xl drop-shadow-lg">৫০% পর্যন্ত ছাড়</p>
         </div>
+      </div>
+      
+      {banners.length > 1 && (
+        <>
+          {/* Navigation dots */}
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2">
+            {banners.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrent(i)}
+                className={`w-3 h-3 rounded-full transition-all ${
+                  i === current ? 'bg-white scale-110' : 'bg-gray-400 hover:bg-gray-300'
+                }`}
+                aria-label={`Banner ${i + 1}`}
+              />
+            ))}
+          </div>
+          
+          {/* Banner counter */}
+          <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-full text-sm">
+            {current + 1}/{banners.length}
+          </div>
+        </>
       )}
     </div>
   );

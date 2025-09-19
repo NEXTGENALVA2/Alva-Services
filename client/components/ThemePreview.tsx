@@ -4,9 +4,10 @@ import { useRegion } from "@/components/RegionContext";
 
 interface ThemePreviewProps {
   products?: any[];
+  banners?: any[];
 }
 
-export default function ThemePreview({ products }: ThemePreviewProps) {
+export default function ThemePreview({ products, banners }: ThemePreviewProps) {
   const { theme } = useTheme();
   const { formatPrice } = useRegion();
   
@@ -28,11 +29,35 @@ export default function ThemePreview({ products }: ThemePreviewProps) {
 
       {/* Banner Section */}
       <div className="mb-6">
-        <div className="h-48 rounded-lg flex items-center justify-center" style={{ background: `linear-gradient(45deg, ${theme.colors.secondary}, ${theme.colors.primary})` }}>
-          <div className="text-center text-white">
-            <h2 className="text-2xl font-bold mb-2">বিশেষ অফার!</h2>
-            <p className="text-base">সব পণ্যে ৫০% পর্যন্ত ছাড়</p>
-          </div>
+        <div className="h-48 rounded-lg overflow-hidden">
+          {banners && banners.length > 0 && banners[0] && banners[0].imageUrl ? (
+            <div className="relative h-full">
+              <img 
+                src={`http://localhost:5000${banners[0].imageUrl}`} 
+                alt="Banner" 
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center">
+                <div className="text-center text-white">
+                  <h2 className="text-2xl font-bold mb-2 drop-shadow-lg">বিশেষ অফার!</h2>
+                  <p className="text-base drop-shadow-lg">সব পণ্যে ৫০% পর্যন্ত ছাড়</p>
+                </div>
+              </div>
+              {banners.length > 1 && (
+                <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white px-2 py-1 rounded text-sm">
+                  1/{banners.length}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="h-full flex items-center justify-center rounded-lg" style={{ background: `linear-gradient(45deg, ${theme.colors.secondary}, ${theme.colors.primary})` }}>
+              <div className="text-center text-white">
+                <h2 className="text-2xl font-bold mb-2">বিশেষ অফার!</h2>
+                <p className="text-base">সব পণ্যে ৫০% পর্যন্ত ছাড়</p>
+                <p className="text-xs mt-2 opacity-75">Upload a banner to see it here</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

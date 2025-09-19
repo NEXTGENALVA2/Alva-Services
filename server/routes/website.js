@@ -171,7 +171,7 @@ router.post('/create', authMiddleware, async (req, res) => {
         id: website.id,
         name: website.name,
         domain: website.domain,
-        url: `https://${website.domain}.yourplatform.com`
+        url: `http://localhost:3000/${website.domain}`
       }
     });
   } catch (error) {

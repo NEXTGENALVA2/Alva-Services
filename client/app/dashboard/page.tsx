@@ -64,11 +64,22 @@ export default function Dashboard() {
 
         // User has domain, try to get full website details
         try {
-          const websiteRes = await axios.get('http://localhost:5000/api/website', {
+          const websiteRes = await axios.get('http://localhost:5000/api/websites', {
             headers: { Authorization: `Bearer ${token}` }
           })
           setWebsite(websiteRes.data)
           console.log('Website found:', websiteRes.data)
+          
+          // Update localStorage with correct website data
+          const websiteData = {
+            id: websiteRes.data.id,
+            domain: websiteRes.data.domain,
+            name: websiteRes.data.name,
+            url: `http://localhost:3000/${websiteRes.data.domain}`
+          }
+          localStorage.setItem('website', JSON.stringify(websiteData))
+          console.log('✅ Updated localStorage with correct website:', websiteData)
+          
         } catch (websiteError: any) {
           console.error('Website API error:', websiteError.response?.data || websiteError.message)
           // Even if website API fails, continue with domain data
@@ -155,12 +166,12 @@ export default function Dashboard() {
       
       // Test server connectivity first
       console.log('Testing server connectivity...')
-      const healthCheck = await fetch('http://localhost:5000/api/website', {
+      const healthCheck = await fetch('http://localhost:5000/api/websites', {
         headers: { Authorization: `Bearer ${token}` }
       })
       console.log('Health check status:', healthCheck.status)
       
-      const response = await axios.post('http://localhost:5000/api/website/create', {
+      const response = await axios.post('http://localhost:5000/api/websites/create', {
         name: websiteName,
         theme: 'default'
       }, {
@@ -263,7 +274,7 @@ export default function Dashboard() {
             <div className="flex space-x-3">
               {website && (
                 <Button variant="outline" asChild>
-                  <a href={`https://${website.domain}.yourplatform.com`} target="_blank">{t('viewWebsite')}</a>
+                  <a href={`http://localhost:3000/${website.domain}`} target="_blank">{t('viewWebsite')}</a>
                 </Button>
               )}
               <Button asChild>
@@ -298,10 +309,10 @@ export default function Dashboard() {
                 <div>
                   <p className="text-sm text-gray-600">ওয়েবসাইট ঠিকানা:</p>
                   <p className="text-sm text-gray-600">{t('websiteAddress')}</p>
-                  <p className="font-medium text-blue-600">{website.domain}.yourplatform.com</p>
+                  <p className="font-medium text-blue-600">localhost:3000/{website.domain}</p>
                 </div>
                 <Button asChild>
-                  <a href={`https://${website.domain}.yourplatform.com`} target="_blank">
+                  <a href={`http://localhost:3000/${website.domain}`} target="_blank">
                     🚀 {t('viewWebsite')}
                   </a>
                 </Button>

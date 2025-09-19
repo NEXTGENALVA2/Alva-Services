@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Cross-Tab Banner Update</title>
+</head>
+<body>
+    <h1>Test Cross-Tab Banner Update</h1>
+    <button id="triggerUpdate">Trigger Banner Update</button>
+    <div id="log"></div>
+    
+    <script>
+        const logDiv = document.getElementById('log');
+        
+        function log(message) {
+            const p = document.createElement('p');
+            p.textContent = new Date().toLocaleTimeString() + ': ' + message;
+            logDiv.appendChild(p);
+            console.log(message);
+        }
+        
+        // Listen for storage changes
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'bannerUpdateTrigger') {
+                log('Storage event detected: ' + e.key + ' = ' + e.newValue);
+            }
+        });
+        
+        // Trigger banner update
+        document.getElementById('triggerUpdate').addEventListener('click', () => {
+            const timestamp = Date.now();
+            localStorage.setItem('bannerUpdateTrigger', timestamp.toString());
+            log('Triggered banner update with timestamp: ' + timestamp);
+        });
+        
+        log('Test page loaded, listening for storage events...');
+    </script>
+</body>
+</html>

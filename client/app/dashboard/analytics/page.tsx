@@ -47,6 +47,7 @@ export default function Analytics() {
   const [salesTrend, setSalesTrend] = useState<SalesData[]>([])
   const [topRegions, setTopRegions] = useState<any[]>([])
   const [topProducts, setTopProducts] = useState<ProductSales[]>([])
+  const [dashboardStats, setDashboardStats] = useState<any>({})
   const [loading, setLoading] = useState(true)
 
   // Color palette for charts
@@ -59,6 +60,11 @@ export default function Analytics() {
   const fetchAnalyticsData = async () => {
     try {
       const token = localStorage.getItem('token')
+      
+      // Fetch dashboard statistics
+      const dashboardRes = await axios.get('http://localhost:5000/api/analytics/dashboard', {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       
       // Fetch customer distribution by region
       const distributionRes = await axios.get('http://localhost:5000/api/analytics/customer-distribution', {
@@ -80,6 +86,7 @@ export default function Analytics() {
         headers: { Authorization: `Bearer ${token}` }
       })
 
+      setDashboardStats(dashboardRes.data || {})
       setCustomerDistribution(distributionRes.data || [])
       setSalesTrend(trendRes.data || [])
       setTopRegions(regionsRes.data || [])
@@ -131,54 +138,113 @@ export default function Analytics() {
       </div>
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Orders */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">মোট কাস্টমার</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium">মোট অর্ডার</CardTitle>
+            <div className="h-4 w-4 text-blue-600">📦</div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-600">
-              {customerDistribution.reduce((sum, item) => sum + item.count, 0)}
+              {dashboardStats.totalOrders || 0}
             </div>
-            <p className="text-xs text-muted-foreground">সব অঞ্চল মিলিয়ে</p>
+            <p className="text-xs text-muted-foreground">
+              পেন্ডিং: {dashboardStats.pendingOrders || 0} | 
+              ডেলিভার: {dashboardStats.deliveredOrders || 0}
+            </p>
           </CardContent>
         </Card>
 
+        {/* Total Revenue */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">সেরা অঞ্চল</CardTitle>
-            <MapPin className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium">মোট রেভিনিউ</CardTitle>
+            <DollarSign className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {topRegions[0]?.division || 'ঢাকা'}
+              ৳{dashboardStats.totalRevenue?.toLocaleString() || 0}
             </div>
-            <p className="text-xs text-muted-foreground">সর্বোচ্চ বিক্রয়</p>
+            <p className="text-xs text-muted-foreground">
+              প্রফিট: ৳{dashboardStats.totalProfit?.toLocaleString() || 0}
+            </p>
           </CardContent>
         </Card>
 
+        {/* Total Products */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">মোট অঞ্চল</CardTitle>
-            <MapPin className="h-4 w-4 text-purple-600" />
+            <CardTitle className="text-sm font-medium">মোট প্রোডাক্ট</CardTitle>
+            <div className="h-4 w-4 text-purple-600">📋</div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {divisionData.length}
+              {dashboardStats.totalProducts || 0}
             </div>
-            <p className="text-xs text-muted-foreground">বিভাগ কভার করা</p>
+            <p className="text-xs text-muted-foreground">
+              স্টক: {dashboardStats.totalStock || 0} পিস
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Total Customers */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">মোট কাস্টমার</CardTitle>
+            <Users className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">
+              {customerDistribution.reduce((sum, item) => sum + item.count, 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              সেরা: {topRegions[0]?.division || 'ঢাকা'}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Additional Analytics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">আজকের অর্ডার</CardTitle>
+            <div className="h-4 w-4 text-indigo-600">📈</div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-indigo-600">
+              {dashboardStats.todayOrders || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              রেভিনিউ: ৳{dashboardStats.todayRevenue?.toLocaleString() || 0}
+            </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">সেরা প্রোডাক্ট</CardTitle>
-            <TrendingUp className="h-4 w-4 text-orange-600" />
+            <CardTitle className="text-sm font-medium">এই মাসে</CardTitle>
+            <div className="h-4 w-4 text-teal-600">📊</div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">
-              {topProducts[0]?.productName?.slice(0, 12) || 'প্রোডাক্ট'}...
+            <div className="text-2xl font-bold text-teal-600">
+              {dashboardStats.monthlyOrders || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              রেভিনিউ: ৳{dashboardStats.monthlyRevenue?.toLocaleString() || 0}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">বেস্ট সেলিং</CardTitle>
+            <TrendingUp className="h-4 w-4 text-pink-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-lg font-bold text-pink-600">
+              {topProducts[0]?.productName?.slice(0, 15) || 'প্রোডাক্ট'}...
             </div>
             <p className="text-xs text-muted-foreground">
               {topProducts[0]?.quantity || 0} পিস বিক্রি

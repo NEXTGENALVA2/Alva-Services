@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug localStorage</title>
+</head>
+<body>
+    <h1>LocalStorage Debug</h1>
+    <div id="results"></div>
+    
+    <script>
+        function debugLocalStorage() {
+            const results = document.getElementById('results');
+            
+            // Check all localStorage items
+            console.log('=== LocalStorage Contents ===');
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                console.log(`${key}:`, value);
+                results.innerHTML += `<p><strong>${key}:</strong> ${value}</p>`;
+            }
+            
+            // Specific checks
+            const website = localStorage.getItem('website');
+            const token = localStorage.getItem('token');
+            
+            console.log('=== Specific Items ===');
+            console.log('Website:', website);
+            console.log('Token:', token);
+            
+            if (website) {
+                try {
+                    const parsed = JSON.parse(website);
+                    console.log('Parsed Website:', parsed);
+                    console.log('Website ID:', parsed.id);
+                    console.log('Website Domain:', parsed.domain);
+                    
+                    results.innerHTML += `<h3>Website Data:</h3>`;
+                    results.innerHTML += `<p>ID: ${parsed.id}</p>`;
+                    results.innerHTML += `<p>Domain: ${parsed.domain}</p>`;
+                    
+                } catch (e) {
+                    console.error('Failed to parse website:', e);
+                    results.innerHTML += `<p style="color: red;">Failed to parse website data</p>`;
+                }
+            } else {
+                results.innerHTML += `<p style="color: red;">No website data found</p>`;
+            }
+        }
+        
+        // Run on load
+        debugLocalStorage();
+    </script>
+</body>
+</html>

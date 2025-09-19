@@ -141,6 +141,45 @@ export default function OrdersPage() {
   const [editDeliveryCharge, setEditDeliveryCharge] = useState<number>(0);
   const [advancePayment, setAdvancePayment] = useState<number>(0);
 
+  // For adding more products
+  const [showAddProductModal, setShowAddProductModal] = useState(false);
+  const [availableProducts, setAvailableProducts] = useState<any[]>([]);
+  const [editableOrderItems, setEditableOrderItems] = useState<any[]>([]);
+
+  // Update item quantity
+  const updateItemQuantity = (index: number, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    
+    const items = editableOrderItems.length > 0 ? [...editableOrderItems] : [...(selectedOrder?.OrderItems || [])];
+    if (items[index]) {
+      items[index].quantity = newQuantity;
+      setEditableOrderItems(items);
+    }
+  };
+
+  // Remove item from order
+  const removeOrderItem = (index: number) => {
+    const items = editableOrderItems.length > 0 ? [...editableOrderItems] : [...(selectedOrder?.OrderItems || [])];
+    items.splice(index, 1);
+    setEditableOrderItems(items);
+  };
+
+  // Add product to order
+  const addProductToOrder = (product: any) => {
+    const items = editableOrderItems.length > 0 ? [...editableOrderItems] : [...(selectedOrder?.OrderItems || [])];
+    const newItem = {
+      Product: {
+        name: product.name,
+        price: parseFloat(product.price),
+        images: product.images || []
+      },
+      quantity: 1
+    };
+    items.push(newItem);
+    setEditableOrderItems(items);
+    setShowAddProductModal(false);
+  };
+
   // Calculate delivery charge based on district selection
   const calculateDeliveryCharge = (district: string) => {
     if (district === "Dhaka") return 60;
@@ -151,6 +190,31 @@ export default function OrdersPage() {
   // Calculate remaining amount after advance payment
   const calculateRemainingAmount = (total: number, advance: number) => {
     return Math.max(0, total - advance);
+  };
+
+  // Calculate dynamic total based on current items
+  const calculateDynamicTotal = () => {
+    const currentItems = editableOrderItems.length > 0 ? editableOrderItems : selectedOrder?.OrderItems || [];
+    
+    console.log('🧮 Calculating total for items:', currentItems);
+    
+    const itemsTotal = currentItems.reduce((total: number, item: any) => {
+      const price = parseFloat(item.Product?.price || 0);
+      const quantity = parseInt(item.quantity || 1);
+      const itemTotal = price * quantity;
+      
+      console.log(`📊 Item: ${item.Product?.name}, Price: ${price}, Qty: ${quantity}, Item Total: ${itemTotal}`);
+      
+      return total + itemTotal;
+    }, 0);
+    
+    // Fix: Convert delivery charge to number
+    const deliveryCharge = parseFloat(String(editDeliveryCharge) || "0");
+    const finalTotal = itemsTotal + deliveryCharge;
+    
+    console.log('💰 Items Total:', itemsTotal, 'Delivery:', deliveryCharge, 'Final Total:', finalTotal);
+    
+    return finalTotal;
   };
 
   // Handle Download functionality - Generate PDF
@@ -604,7 +668,26 @@ export default function OrdersPage() {
 
   useEffect(() => {
     fetchOrders();
+    fetchProducts();
   }, []);
+
+  const fetchProducts = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:5000/api/products', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const products = await response.json();
+        setAvailableProducts(products);
+      }
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -793,6 +876,8 @@ export default function OrdersPage() {
                           setEditDistrict(order.customerDistrict || "");
                           setEditDeliveryCharge(order.deliveryCharge || 0);
                           setAdvancePayment(order.advancePayment || 0);
+                          // Initialize editable order items
+                          setEditableOrderItems([]);
                           setShowOrderDetails(true);
                         }}
                         className="inline-flex items-center px-3 py-1 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
@@ -937,7 +1022,16 @@ export default function OrdersPage() {
                 </div>
               </div>
               <div className="mb-6">
-                <h3 className="font-semibold mb-2">Products</h3>
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-semibold">Products</h3>
+                  <button 
+                    onClick={() => setShowAddProductModal(true)}
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 flex items-center gap-2"
+                  >
+                    <Package className="w-4 h-4" />
+                    Add More Products
+                  </button>
+                </div>
                 <div className="border rounded-lg overflow-x-auto">
                   <table className="w-full">
                     <thead className="bg-gray-50">
@@ -947,14 +1041,14 @@ export default function OrdersPage() {
                         <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">Price</th>
                         <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">Quantity</th>
                         <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">Total</th>
+                        <th className="px-4 py-2 text-left text-sm font-medium text-gray-900">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {(selectedOrder.OrderItems && Array.isArray(selectedOrder.OrderItems) && selectedOrder.OrderItems.length > 0) ? (
-                        selectedOrder.OrderItems.map((item, index) => (
+                      {(editableOrderItems.length > 0 ? editableOrderItems : selectedOrder.OrderItems || []).map((item: any, index: number) => (
                           <tr key={index}>
                             <td className="px-4 py-2">
-                              {item.Product.images && item.Product.images.length > 0 ? (
+                              {item.Product?.images && item.Product.images.length > 0 ? (
                                 <img
                                   src={item.Product.images[0]}
                                   alt={item.Product.name}
@@ -964,47 +1058,159 @@ export default function OrdersPage() {
                                 <span className="text-gray-400">No image</span>
                               )}
                             </td>
-                            <td className="px-4 py-2">{item.Product.name}</td>
-                            <td className="px-4 py-2">৳{item.Product.price}</td>
-                            <td className="px-4 py-2">{item.Product.quantity || item.quantity}</td>
-                            <td className="px-4 py-2">৳{item.Product.price * (item.Product.quantity || item.quantity || 1)}</td>
+                            <td className="px-4 py-2">{item.Product?.name}</td>
+                            <td className="px-4 py-2">৳{item.Product?.price}</td>
+                            <td className="px-4 py-2">
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={() => updateItemQuantity(index, (item.quantity || 1) - 1)}
+                                  className="bg-red-500 text-white w-6 h-6 rounded text-xs hover:bg-red-600"
+                                  disabled={(item.quantity || 1) <= 1}
+                                >
+                                  -
+                                </button>
+                                <span className="mx-2 min-w-[20px] text-center">{item.quantity || 1}</span>
+                                <button 
+                                  onClick={() => updateItemQuantity(index, (item.quantity || 1) + 1)}
+                                  className="bg-green-500 text-white w-6 h-6 rounded text-xs hover:bg-green-600"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2">৳{(item.Product?.price || 0) * (item.quantity || 1)}</td>
+                            <td className="px-4 py-2">
+                              <button 
+                                onClick={() => removeOrderItem(index)}
+                                className="bg-red-500 text-white p-1 rounded hover:bg-red-600"
+                                title="Remove Item"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
                           </tr>
-                        ))
-                      ) : (
+                        ))}
+                        {(editableOrderItems.length === 0 && (!selectedOrder.OrderItems || selectedOrder.OrderItems.length === 0)) && (
                         <tr>
-                          <td colSpan={5} className="px-4 py-6 text-center text-gray-400">No items found in order.</td>
+                          <td colSpan={6} className="px-4 py-6 text-center text-gray-400">No items found in order.</td>
                         </tr>
-                      )}
+                        )}
                     </tbody>
                     <tfoot className="bg-gray-50">
                       <tr>
-                        <td colSpan={4} className="px-4 py-2 text-right font-medium">Sub Total:</td>
-                        <td className="px-4 py-2">৳{selectedOrder.totalAmount - editDeliveryCharge}</td>
+                        <td colSpan={5} className="px-4 py-2 text-right font-medium">Sub Total:</td>
+                        <td className="px-4 py-2">৳{calculateDynamicTotal() - parseFloat(String(editDeliveryCharge) || "0")}</td>
                       </tr>
                       <tr>
-                        <td colSpan={4} className="px-4 py-2 text-right font-medium">VAT/TAX (0%):</td>
+                        <td colSpan={5} className="px-4 py-2 text-right font-medium">VAT/TAX (0%):</td>
                         <td className="px-4 py-2">৳{selectedOrder.vatTax ?? 0}</td>
                       </tr>
                       <tr>
-                        <td colSpan={4} className="px-4 py-2 text-right font-medium">Delivery Charge:</td>
-                        <td className="px-4 py-2">৳{editDeliveryCharge}</td>
+                        <td colSpan={5} className="px-4 py-2 text-right font-medium">Delivery Charge:</td>
+                        <td className="px-4 py-2">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-1">
+                              <span>৳</span>
+                              <input 
+                                type="number" 
+                                value={editDeliveryCharge} 
+                                onChange={(e) => setEditDeliveryCharge(parseFloat(e.target.value) || 0)}
+                                className="border rounded px-2 py-1 w-20 text-right text-sm"
+                                min="0"
+                                step="0.01"
+                              />
+                            </div>
+                            <div className="flex gap-1">
+                              <button 
+                                onClick={() => setEditDeliveryCharge(60)}
+                                className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs hover:bg-blue-200"
+                                title="Dhaka delivery charge"
+                              >
+                                ৳60
+                              </button>
+                              <button 
+                                onClick={() => setEditDeliveryCharge(120)}
+                                className="bg-green-100 text-green-800 px-2 py-1 rounded text-xs hover:bg-green-200"
+                                title="Outside Dhaka delivery charge"
+                              >
+                                ৳120
+                              </button>
+                              <button 
+                                onClick={() => setEditDeliveryCharge(0)}
+                                className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs hover:bg-gray-200"
+                                title="Free delivery"
+                              >
+                                Free
+                              </button>
+                            </div>
+                          </div>
+                        </td>
                       </tr>
                       <tr className="border-t-2 border-gray-300">
-                        <td colSpan={4} className="px-4 py-2 text-right font-bold text-lg">Total:</td>
-                        <td className="px-4 py-2 font-bold text-lg">৳{selectedOrder.totalAmount}</td>
+                        <td colSpan={5} className="px-4 py-2 text-right font-bold text-lg">Total:</td>
+                        <td className="px-4 py-2 font-bold text-lg">৳{calculateDynamicTotal()}</td>
                       </tr>
                       <tr>
-                        <td colSpan={4} className="px-4 py-2 text-right font-medium">Advance Paid:</td>
+                        <td colSpan={5} className="px-4 py-2 text-right font-medium">Advance Paid:</td>
                         <td className="px-4 py-2 font-medium text-green-600">৳{advancePayment}</td>
                       </tr>
                       <tr>
-                        <td colSpan={4} className="px-4 py-2 text-right font-bold">Remaining:</td>
-                        <td className="px-4 py-2 font-bold text-red-600">৳{calculateRemainingAmount(selectedOrder.totalAmount, advancePayment)}</td>
+                        <td colSpan={5} className="px-4 py-2 text-right font-bold">Remaining:</td>
+                        <td className="px-4 py-2 font-bold text-red-600">৳{calculateRemainingAmount(calculateDynamicTotal(), advancePayment)}</td>
                       </tr>
                     </tfoot>
                   </table>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Product Modal */}
+      {showAddProductModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowAddProductModal(false)} />
+            <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full mx-auto mt-12 p-6">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold">Add More Products to Order</h2>
+                <button 
+                  onClick={() => setShowAddProductModal(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  ×
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+                {availableProducts.map((product) => (
+                  <div key={product.id} className="border rounded-lg p-4 hover:shadow-md">
+                    {product.images && product.images.length > 0 && (
+                      <img 
+                        src={product.images[0]} 
+                        alt={product.name}
+                        className="w-full h-32 object-cover rounded mb-2"
+                      />
+                    )}
+                    <h3 className="font-semibold text-sm mb-1">{product.name}</h3>
+                    <p className="text-green-600 font-bold mb-2">৳{product.price}</p>
+                    <button 
+                      onClick={() => addProductToOrder(product)}
+                      className="w-full bg-blue-600 text-white py-1 px-2 rounded text-sm hover:bg-blue-700"
+                    >
+                      Add to Order
+                    </button>
+                  </div>
+                ))}
+              </div>
+              
+              {availableProducts.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                  <p>No products available to add</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

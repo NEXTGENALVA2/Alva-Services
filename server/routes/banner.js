@@ -25,11 +25,26 @@ const upload = multer({ storage });
 const { Website } = require('../models');
 router.get('/', async (req, res) => {
   try {
+    console.log('📥 Banner GET request - Query:', req.query);
+    
     let websiteId = req.query.websiteId;
     if (!websiteId && req.query.domain) {
-      const website = await Website.findOne({ where: { domain: req.query.domain } });
-      if (!website) return res.status(404).json({ error: 'Website not found' });
+      console.log('🔍 Looking for website by domain:', req.query.domain);
+      let website = await Website.findOne({ where: { domain: req.query.domain } });
+      
+      if (!website) {
+        console.log('❌ Website not found for GET, creating temporary website for domain:', req.query.domain);
+        // Create temporary website for banner fetching
+        website = await Website.create({
+          name: `Auto Website - ${req.query.domain}`,
+          domain: req.query.domain,
+          userId: null, // Allow null userId for temporary websites
+          isActive: true
+        });
+        console.log('✅ Created temporary website with ID:', website.id);
+      }
       websiteId = website.id;
+      console.log('✅ Found website ID:', websiteId);
     }
     if (!websiteId) return res.status(400).json({ error: 'websiteId or domain required' });
     // সর্বশেষ ৩টা ব্যানার
@@ -38,6 +53,7 @@ router.get('/', async (req, res) => {
       order: [['createdAt', 'DESC']],
       limit: 3
     });
+    console.log('📸 Found banners count:', banners.length);
     res.json(banners);
   } catch (err) {
     console.error('Banner get error:', err);
@@ -50,11 +66,26 @@ router.get('/', async (req, res) => {
 // Requires websiteId in body or ?domain= in query
 router.post('/', upload.single('banner'), async (req, res) => {
   try {
+    console.log('📤 Banner POST request - Query:', req.query, 'Body keys:', Object.keys(req.body));
+    
     let websiteId = req.body.websiteId;
     if (!websiteId && req.query.domain) {
-      const website = await Website.findOne({ where: { domain: req.query.domain } });
-      if (!website) return res.status(404).json({ error: 'Website not found' });
+      console.log('🔍 Looking for website by domain:', req.query.domain);
+      let website = await Website.findOne({ where: { domain: req.query.domain } });
+      
+      if (!website) {
+        console.log('❌ Website not found, creating temporary website for domain:', req.query.domain);
+        // Create temporary website for banner upload
+        website = await Website.create({
+          name: `Auto Website - ${req.query.domain}`,
+          domain: req.query.domain,
+          userId: null, // Allow null userId for temporary websites
+          isActive: true
+        });
+        console.log('✅ Created temporary website with ID:', website.id);
+      }
       websiteId = website.id;
+      console.log('✅ Using website ID:', websiteId);
     }
     if (!websiteId) return res.status(400).json({ error: 'websiteId or domain required' });
 

@@ -89,7 +89,7 @@ router.get('/sales-trend', authMiddleware, async (req, res) => {
         [sequelize.fn('SUM', sequelize.col('totalAmount')), 'revenue']
       ],
       group: [sequelize.fn('DATE', sequelize.col('createdAt'))],
-      order: [['createdAt', 'ASC']],
+      order: [[sequelize.fn('DATE', sequelize.col('createdAt')), 'ASC']],
       raw: true
     });
 
@@ -195,7 +195,7 @@ router.get('/top-products', authMiddleware, async (req, res) => {
         'productId',
         [sequelize.fn('SUM', sequelize.col('OrderItem.quantity')), 'totalQuantity'],
         [sequelize.fn('COUNT', sequelize.fn('DISTINCT', sequelize.col('Order.id'))), 'orderCount'],
-        [sequelize.fn('SUM', sequelize.literal('OrderItem.quantity * OrderItem.price')), 'totalRevenue']
+        [sequelize.fn('SUM', sequelize.literal('"OrderItem"."quantity" * "OrderItem"."price"')), 'totalRevenue']
       ],
       group: ['OrderItem.productId', 'Product.id'],
       order: [[sequelize.fn('SUM', sequelize.col('OrderItem.quantity')), 'DESC']],

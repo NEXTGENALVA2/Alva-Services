@@ -8,7 +8,7 @@ const router = express.Router();
 router.get('/current', authMiddleware, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      include: [{ model: Subscription, as: 'subscription' }]
+      include: [{ model: Subscription }]
     });
 
     if (!user) {
