@@ -11,11 +11,13 @@ import {
   LogOut,
   Menu,
   X,
-  Palette
+  Palette,
+  CreditCard
 } from 'lucide-react'
 import Sidebar from '../../components/Sidebar'
 import Topbar from '../../components/Topbar'
 import SubscriptionWarning from '../../components/SubscriptionWarning'
+import AccountGuard from '../../components/AccountGuard'
 import { NotificationProvider, useNotification } from '../../contexts/NotificationContext'
 
 // Simple translation function
@@ -72,6 +74,7 @@ function DashboardContent({
     { name: mounted ? t('products') : 'প্রোডাক্ট', href: '/dashboard/products', icon: Package },
     { name: mounted ? t('orders') : 'অর্ডার', href: '/dashboard/orders', icon: ShoppingCart, badge: pendingOrdersCount },
     { name: mounted ? t('analytics') : 'অ্যানালিটিক্স', href: '/dashboard/analytics', icon: BarChart3 },
+    { name: mounted ? t('subscription') : 'সাবস্ক্রিপশন', href: '/dashboard/subscription', icon: CreditCard },
     { name: mounted ? t('customization') : 'কাস্টমাইজেশন', href: '/dashboard/customization', icon: Palette },
     { name: mounted ? t('settings') : 'সেটিংস', href: '/dashboard/settings', icon: Settings },
   ]
@@ -113,7 +116,9 @@ export default function DashboardLayout({
 }) {
   return (
     <NotificationProvider>
-      <DashboardContent>{children}</DashboardContent>
+      <AccountGuard>
+        <DashboardContent>{children}</DashboardContent>
+      </AccountGuard>
     </NotificationProvider>
   )
 }

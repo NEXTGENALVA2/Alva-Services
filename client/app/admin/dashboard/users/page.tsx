@@ -85,6 +85,38 @@ export default function UsersManagement() {
     }
   }
 
+  const activateUserWithFreshStart = async (userId: string) => {
+    try {
+      const token = localStorage.getItem('adminToken')
+      const response = await axios.patch(`http://localhost:5000/api/admin/users/${userId}/status`, 
+        { isActive: true },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      // Update local state with fresh data
+      setUsers(users.map(user => 
+        user.id === userId ? { 
+          ...user, 
+          isActive: true,
+          subscriptionType: 'trial',
+          trialEndsAt: response.data.user.trialEndsAt,
+          subscriptionEndsAt: undefined
+        } : user
+      ))
+      
+      // Fire custom event to notify all components about user status change
+      console.log('Admin: Firing userStatusUpdated event for user:', userId);
+      window.dispatchEvent(new CustomEvent('userStatusUpdated', { 
+        detail: { userId, isActive: true } 
+      }))
+      
+      alert('✅ ইউজার সফলভাবে সক্রিয় করা হয়েছে নতুন ৩ দিনের ট্রায়াল সহ!\n\n🚀 ইউজারের Dashboard এখনই unlock হয়ে গেছে!')
+    } catch (error: any) {
+      alert('ইউজার সক্রিয় করতে সমস্যা হয়েছে')
+      console.error('Activate user error:', error)
+    }
+  }
+
   const manageTrial = async (userId: string, action: 'activate' | 'deactivate', days: number = 3) => {
     try {
       const token = localStorage.getItem('adminToken')
@@ -291,26 +323,33 @@ export default function UsersManagement() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm space-x-1">
                     <div className="flex flex-wrap gap-1">
-                      <button
-                        onClick={() => toggleUserStatus(user.id, user.isActive)}
-                        className={`px-3 py-1 text-xs rounded-md font-medium ${
-                          user.isActive
-                            ? 'bg-red-100 text-red-800 hover:bg-red-200'
-                            : 'bg-green-100 text-green-800 hover:bg-green-200'
-                        }`}
-                      >
-                        {user.isActive ? 'নিষ্ক্রিয়' : 'সক্রিয়'} করুন
-                      </button>
+                      {!user.isActive ? (
+                        <button
+                          onClick={() => activateUserWithFreshStart(user.id)}
+                          className="px-3 py-1 text-xs rounded-md font-medium bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300"
+                          title="ইউজারকে ৩ দিনের নতুন ট্রায়াল সহ সক্রিয় করুন"
+                        >
+                          🚀 Admin Activate (Fresh Start)
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => toggleUserStatus(user.id, user.isActive)}
+                          className="px-3 py-1 text-xs rounded-md font-medium bg-red-100 text-red-800 hover:bg-red-200"
+                          title="ইউজারকে নিষ্ক্রিয় করুন"
+                        >
+                          নিষ্ক্রিয় করুন
+                        </button>
+                      )}
                       
-                      {/* Trial Management Buttons */}
-                      {user.subscriptionType === 'trial' && (
+                      {/* Additional Trial Management for Active Users */}
+                      {user.isActive && user.subscriptionType === 'trial' && (
                         <>
                           <button
                             onClick={() => manageTrial(user.id, 'activate', 3)}
                             className="px-3 py-1 text-xs rounded-md font-medium bg-yellow-100 text-yellow-800 hover:bg-yellow-200"
-                            title="৩ দিনের ট্রায়াল চালু করুন"
+                            title="৩ দিনের ট্রায়াল এক্সটেন্ড করুন"
                           >
-                            ট্রায়াল চালু
+                            ট্রায়াল এক্সটেন্ড
                           </button>
                           <button
                             onClick={() => manageTrial(user.id, 'deactivate')}
@@ -322,7 +361,7 @@ export default function UsersManagement() {
                         </>
                       )}
                       
-                      {user.subscriptionType !== 'trial' && (
+                      {user.isActive && user.subscriptionType !== 'trial' && (
                         <button
                           onClick={() => manageTrial(user.id, 'activate', 3)}
                           className="px-3 py-1 text-xs rounded-md font-medium bg-purple-100 text-purple-800 hover:bg-purple-200"
@@ -335,6 +374,7 @@ export default function UsersManagement() {
                       <a
                         href={`/admin/dashboard/users/${user.id}`}
                         className="px-3 py-1 text-xs rounded-md font-medium bg-blue-100 text-blue-800 hover:bg-blue-200"
+                        style={{ cursor: 'pointer' }}
                       >
                         বিস্তারিত
                       </a>

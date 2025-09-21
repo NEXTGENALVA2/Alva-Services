@@ -22,6 +22,17 @@ const User = sequelize.define('User', {
   trialEndsAt: DataTypes.DATE,
   subscriptionType: { type: DataTypes.ENUM('trial', 'monthly', '6month', 'yearly'), defaultValue: 'trial' },
   subscriptionEndsAt: DataTypes.DATE,
+  // Trial tracking fields
+  hasUsedTrial: { type: DataTypes.BOOLEAN, defaultValue: false },
+  trialEnabledByAdmin: { type: DataTypes.BOOLEAN, defaultValue: false },
+  // Payment fields
+  paymentMethod: DataTypes.STRING,
+  transactionId: DataTypes.STRING,
+  paymentPhone: DataTypes.STRING,
+  paymentScreenshot: DataTypes.STRING,
+  paymentPlanId: DataTypes.STRING,
+  paymentApproved: { type: DataTypes.BOOLEAN, defaultValue: false },
+  paymentApprovedAt: DataTypes.DATE,
 });
 
 // Website model

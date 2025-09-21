@@ -16,6 +16,7 @@ interface TopbarProps {
 export default function Topbar({ setSidebarOpen }: TopbarProps) {
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [isUserActive, setIsUserActive] = useState(true);
   const { refreshPendingOrders } = useNotification();
 
   // Use order notifications hook
@@ -46,6 +47,7 @@ export default function Topbar({ setSidebarOpen }: TopbarProps) {
 
   useEffect(() => {
     setMounted(true);
+    checkUserStatus();
     const fetchUrl = () => {
       getDomain().then((d) => {
         try {
@@ -67,9 +69,58 @@ export default function Topbar({ setSidebarOpen }: TopbarProps) {
       });
     };
     fetchUrl();
+    
+    // Listen for user status updates
+    const handleUserStatusUpdate = () => {
+      checkUserStatus();
+    };
+    
     window.addEventListener('domainUpdated', fetchUrl);
-    return () => window.removeEventListener('domainUpdated', fetchUrl);
+    window.addEventListener('userStatusUpdated', handleUserStatusUpdate);
+    
+    return () => {
+      window.removeEventListener('domainUpdated', fetchUrl);
+      window.removeEventListener('userStatusUpdated', handleUserStatusUpdate);
+    };
   }, []);
+
+  const checkUserStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      const response = await axios.get('http://localhost:5000/api/user/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setIsUserActive(response.data.isActive);
+    } catch (error) {
+      console.error('Error checking user status:', error);
+    }
+  };
+
+  const handleVisitWebsite = () => {
+    if (!isUserActive) {
+      alert('Your account is deactivated. Please contact support or upgrade your subscription.');
+      return;
+    }
+    
+    if (websiteUrl) {
+      window.open(websiteUrl, '_blank');
+    }
+  };
+
+  const handleCopyWebsiteUrl = () => {
+    if (!isUserActive) {
+      alert('Your account is deactivated. Please contact support or upgrade your subscription.');
+      return;
+    }
+    
+    if (websiteUrl) {
+      navigator.clipboard.writeText(websiteUrl);
+      alert('Website URL copied to clipboard!');
+    }
+  };
 
   const handleLogout = () => {
     localStorage.clear();
@@ -105,57 +156,44 @@ export default function Topbar({ setSidebarOpen }: TopbarProps) {
         )}
         
         {mounted && websiteUrl && (
-          <a
-            href={websiteUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium transition-colors"
-            title="Visit your site"
+          <button
+            onClick={handleVisitWebsite}
+            className={`hidden sm:flex items-center gap-2 font-medium transition-colors ${
+              !isUserActive 
+                ? 'text-gray-400 cursor-not-allowed' 
+                : 'text-blue-600 hover:text-blue-700'
+            }`}
+            title={!isUserActive ? "Account deactivated" : "Visit your site"}
+            disabled={!isUserActive}
           >
             <ExternalLink className="h-4 w-4" />
             <span className="text-sm truncate max-w-32 lg:max-w-none">{websiteUrl}</span>
-          </a>
+          </button>
         )}
         
         <button 
-          className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
-          onClick={async () => {
-            if (websiteUrl) {
-              try {
-                await navigator.clipboard.writeText(websiteUrl);
-                alert('Website URL copied to clipboard!');
-              } catch (err) {
-                // Fallback for older browsers
-                try {
-                  const textArea = document.createElement('textarea');
-                  textArea.value = websiteUrl;
-                  document.body.appendChild(textArea);
-                  textArea.select();
-                  document.execCommand('copy');
-                  document.body.removeChild(textArea);
-                  alert('Website URL copied to clipboard!');
-                } catch (fallbackErr) {
-                  alert('Failed to copy URL. Please copy manually: ' + websiteUrl);
-                }
-              }
-            } else {
-              alert('No website URL available to copy.');
-            }
-          }}
+          className={`hidden sm:inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+            !isUserActive 
+              ? 'text-gray-400 hover:text-gray-400 hover:bg-gray-50 cursor-not-allowed' 
+              : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+          onClick={handleCopyWebsiteUrl}
+          disabled={!isUserActive}
+          title={!isUserActive ? "Account deactivated" : "Copy website URL"}
         >
           <Copy className="h-4 w-4" />
           Copy
         </button>
         
         <button 
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
-          onClick={() => {
-            if (websiteUrl) {
-              window.open(websiteUrl, '_blank', 'noopener,noreferrer');
-            } else {
-              alert('No website found! Please create your website first.');
-            }
-          }}
+          className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+            !isUserActive 
+              ? 'text-gray-400 bg-gray-50 hover:bg-gray-50 cursor-not-allowed' 
+              : 'text-blue-700 hover:text-blue-800 bg-blue-50 hover:bg-blue-100'
+          }`}
+          onClick={handleVisitWebsite}
+          disabled={!isUserActive}
+          title={!isUserActive ? "Account deactivated" : "Visit your website"}
         >
           <ExternalLink className="h-4 w-4" />
           <span className="hidden sm:inline">Website</span>

@@ -1,8 +1,9 @@
-import React, { Dispatch, SetStateAction } from 'react';
+import React, { Dispatch, SetStateAction, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LucideIcon, X } from 'lucide-react';
 import { Badge } from './ui/badge';
+import axios from 'axios';
 
 interface NavigationItem {
   name: string;
@@ -19,6 +20,42 @@ interface SidebarProps {
 
 export default function Sidebar({ sidebarOpen, setSidebarOpen, navigation }: SidebarProps) {
   const pathname = usePathname();
+  const [isUserActive, setIsUserActive] = useState(true);
+
+  useEffect(() => {
+    checkUserStatus();
+    
+    // Listen for user status updates
+    const handleUserStatusUpdate = () => {
+      console.log('Sidebar: Received userStatusUpdated event');
+      checkUserStatus();
+    };
+    
+    window.addEventListener('userStatusUpdated', handleUserStatusUpdate);
+    
+    return () => {
+      window.removeEventListener('userStatusUpdated', handleUserStatusUpdate);
+    };
+  }, []);
+
+  const checkUserStatus = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      console.log('Sidebar: Checking user status...');
+
+      const response = await axios.get('http://localhost:5000/api/user/profile', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      console.log('Sidebar: User status response:', response.data);
+      
+      setIsUserActive(response.data.isActive);
+    } catch (error) {
+      console.error('Sidebar: Error checking user status:', error);
+    }
+  };
 
   return (
     <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white/95 backdrop-blur-xl border-r border-slate-200 shadow-xl transform ${
@@ -52,29 +89,47 @@ export default function Sidebar({ sidebarOpen, setSidebarOpen, navigation }: Sid
             const Icon = item.icon;
             const isActive = pathname === item.href;
             
+            // Allow subscription page always, disable others if user is inactive
+            const isDisabled = !isUserActive && item.href !== '/dashboard/subscription';
+            
             return (
               <li key={item.href}>
-                <Link 
-                  href={item.href} 
-                  className={`group flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 shadow-sm border border-blue-100' 
-                      : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
-                  }`}
-                  onClick={() => setSidebarOpen(false)} // Close sidebar on mobile after navigation
-                >
-                  <div className="flex items-center gap-3">
-                    <Icon className={`h-5 w-5 transition-transform duration-200 ${
-                      isActive ? 'scale-110' : 'group-hover:scale-105'
-                    }`} />
-                    {item.name}
+                {isDisabled ? (
+                  <div className={`group flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-200 text-slate-400 cursor-not-allowed opacity-50`}>
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-5 w-5" />
+                      {item.name}
+                    </div>
+                    {item.badge && item.badge > 0 && (
+                      <Badge variant="secondary" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs opacity-50">
+                        {item.badge}
+                      </Badge>
+                    )}
+                    <div className="text-xs text-slate-400">🔒</div>
                   </div>
-                  {item.badge && item.badge > 0 && (
-                    <Badge variant="destructive" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-                      {item.badge}
-                    </Badge>
-                  )}
-                </Link>
+                ) : (
+                  <Link 
+                    href={item.href} 
+                    className={`group flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl font-medium transition-all duration-200 ${
+                      isActive 
+                        ? 'bg-gradient-to-r from-blue-50 to-purple-50 text-blue-700 shadow-sm border border-blue-100' 
+                        : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                    onClick={() => setSidebarOpen(false)} // Close sidebar on mobile after navigation
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className={`h-5 w-5 transition-transform duration-200 ${
+                        isActive ? 'scale-110' : 'group-hover:scale-105'
+                      }`} />
+                      {item.name}
+                    </div>
+                    {item.badge && item.badge > 0 && (
+                      <Badge variant="destructive" className="h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+                        {item.badge}
+                      </Badge>
+                    )}
+                  </Link>
+                )}
               </li>
             );
           })}

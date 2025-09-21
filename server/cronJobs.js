@@ -9,44 +9,63 @@ async function deactivateExpiredUsers() {
     
     const now = new Date();
     
-    // Find users whose subscriptions have expired
-    const expiredUsers = await User.findAll({
+    // Find users whose trial subscriptions have expired
+    const expiredTrialUsers = await User.findAll({
       where: {
         isActive: true,
-        [Op.or]: [
-          {
-            subscriptionType: 'trial',
-            trialEndsAt: {
-              [Op.lte]: now
-            }
-          },
-          {
-            subscriptionType: { [Op.ne]: 'trial' },
-            subscriptionEndsAt: {
-              [Op.lte]: now
-            }
-          }
-        ]
+        subscriptionType: 'trial',
+        trialEndsAt: {
+          [Op.lte]: now
+        }
+      }
+    });
+
+    // Find users whose paid subscriptions have expired
+    const expiredPaidUsers = await User.findAll({
+      where: {
+        isActive: true,
+        subscriptionType: { [Op.ne]: 'trial' },
+        subscriptionEndsAt: {
+          [Op.lte]: now
+        }
       }
     });
 
     let deactivatedCount = 0;
 
-    for (const user of expiredUsers) {
+    // Handle expired trial users
+    for (const user of expiredTrialUsers) {
+      try {
+        await user.update({ 
+          isActive: false,
+          subscriptionType: 'expired_trial'
+        });
+        deactivatedCount++;
+        console.log(`✅ Expired trial user: ${user.email} - marked as expired_trial`);
+      } catch (error) {
+        console.error(`❌ Error deactivating trial user ${user.email}:`, error);
+      }
+    }
+
+    // Handle expired paid users
+    for (const user of expiredPaidUsers) {
       try {
         await user.update({ isActive: false });
         deactivatedCount++;
-        console.log(`✅ Deactivated expired user: ${user.email} (${user.subscriptionType})`);
+        console.log(`✅ Deactivated expired paid user: ${user.email} (${user.subscriptionType})`);
       } catch (error) {
         console.error(`❌ Error deactivating user ${user.email}:`, error);
       }
     }
 
-    console.log(`✅ Expired users check completed. Deactivated: ${deactivatedCount}/${expiredUsers.length}`);
+    const totalExpired = expiredTrialUsers.length + expiredPaidUsers.length;
+    console.log(`✅ Expired users check completed. Deactivated: ${deactivatedCount}/${totalExpired} (Trials: ${expiredTrialUsers.length}, Paid: ${expiredPaidUsers.length})`);
     
     return {
-      total: expiredUsers.length,
-      deactivated: deactivatedCount
+      total: totalExpired,
+      deactivated: deactivatedCount,
+      expiredTrials: expiredTrialUsers.length,
+      expiredPaid: expiredPaidUsers.length
     };
 
   } catch (error) {

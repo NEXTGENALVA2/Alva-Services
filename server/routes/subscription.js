@@ -15,13 +15,41 @@ router.get('/current', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Return user subscription info
+    // Check if trial has expired
+    let isTrialExpired = false;
+    let needsRenewal = false;
+    
+    if (user.subscriptionType === 'trial' && user.trialEndsAt) {
+      const now = new Date();
+      isTrialExpired = now > new Date(user.trialEndsAt);
+      
+      if (isTrialExpired && user.isActive) {
+        // Auto-deactivate expired trial
+        await user.update({ 
+          isActive: false,
+          subscriptionType: 'expired_trial'
+        });
+        needsRenewal = true;
+      }
+    }
+
+    // Return user subscription info with payment details
     const subscriptionData = {
       subscriptionType: user.subscriptionType || 'trial',
       isActive: user.isActive,
       trialEndsAt: user.trialEndsAt,
       subscriptionEndsAt: user.subscriptionEndsAt,
-      subscriptionStatus: user.isActive ? 'active' : 'expired'
+      subscriptionStatus: user.isActive ? 'active' : 'expired',
+      isTrialExpired,
+      needsRenewal,
+      hasUsedTrial: user.hasUsedTrial,
+      trialEnabledByAdmin: user.trialEnabledByAdmin,
+      // Include payment info if exists
+      paymentMethod: user.paymentMethod,
+      transactionId: user.transactionId,
+      paymentPhone: user.paymentPhone,
+      paymentPlanId: user.paymentPlanId,
+      paymentApproved: user.paymentApproved
     };
 
     res.json(subscriptionData);
@@ -40,9 +68,11 @@ router.post('/trial', authMiddleware, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Check if user already had trial
-    if (user.subscriptionType === 'trial' && user.trialEndsAt) {
-      return res.status(400).json({ message: 'Trial already used' });
+    // Check trial eligibility
+    if (user.hasUsedTrial && !user.trialEnabledByAdmin) {
+      return res.status(400).json({ 
+        message: 'Trial already used. Please choose a paid plan.' 
+      });
     }
 
     const trialEnd = new Date();
@@ -51,7 +81,9 @@ router.post('/trial', authMiddleware, async (req, res) => {
     await user.update({
       subscriptionType: 'trial',
       isActive: true,
-      trialEndsAt: trialEnd
+      trialEndsAt: trialEnd,
+      hasUsedTrial: true,
+      trialEnabledByAdmin: false // Reset admin flag after use
     });
 
     res.json({ 
@@ -204,6 +236,67 @@ router.get('/current', authMiddleware, async (req, res) => {
 
   } catch (error) {
     res.status(500).json({ message: 'Error fetching subscription', error: error.message });
+  }
+});
+
+// Payment submission endpoint for subscription
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const dir = path.join(__dirname, '../uploads/payments');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage });
+
+router.post('/payment', authMiddleware, upload.single('screenshot'), async (req, res) => {
+  try {
+    console.log('Payment endpoint hit by user:', req.user.email);
+    const userId = req.user.id;
+    const { planId, paymentMethod, transactionId, paymentPhone } = req.body;
+    const screenshotPath = req.file ? `/uploads/payments/${req.file.filename}` : null;
+
+    console.log('Payment data:', { planId, paymentMethod, transactionId, paymentPhone, screenshotPath });
+
+    // Save payment info to DB (add Payment model if needed)
+    // For demo, save to User model (add fields if needed)
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Update user with payment info
+    await user.update({
+      paymentMethod: paymentMethod,
+      transactionId: transactionId,
+      paymentPhone: paymentPhone,
+      paymentScreenshot: screenshotPath,
+      paymentPlanId: planId
+    });
+
+    console.log('Payment info saved for user:', user.email);
+    res.json({ 
+      success: true,
+      message: 'Payment info saved', 
+      paymentMethod, 
+      transactionId, 
+      paymentPhone, 
+      screenshotPath, 
+      planId 
+    });
+  } catch (error) {
+    console.error('Payment submission error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 

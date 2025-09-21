@@ -334,7 +334,7 @@ router.get('/users/expiring', adminAuth, async (req, res) => {
   }
 });
 
-// Update user status
+// Update user status with comprehensive activation
 router.patch('/users/:id/status', adminAuth, async (req, res) => {
   try {
     const { id } = req.params;
@@ -345,46 +345,38 @@ router.patch('/users/:id/status', adminAuth, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // If activating user, extend their subscription
+    // If activating user, give them a fresh start
     if (isActive && !user.isActive) {
       const now = new Date();
       
-      // If user is on trial and trial has expired, extend trial by 3 days
-      if (user.subscriptionType === 'trial') {
-        const newTrialEnd = new Date();
-        newTrialEnd.setDate(newTrialEnd.getDate() + 3);
-        await user.update({ 
-          isActive: true,
-          trialEndsAt: newTrialEnd
-        });
-      }
-      // If user has paid subscription but expired, extend by their plan duration
-      else if (user.subscriptionType !== 'trial') {
-        const planDurations = {
-          monthly: 30,
-          '6month': 180,
-          yearly: 365
-        };
-        
-        const days = planDurations[user.subscriptionType] || 30;
-        const newSubEnd = new Date();
-        newSubEnd.setDate(newSubEnd.getDate() + days);
-        
-        await user.update({ 
-          isActive: true,
-          subscriptionEndsAt: newSubEnd
-        });
-      }
+      // Always give a fresh 3-day trial when admin activates
+      const newTrialEnd = new Date();
+      newTrialEnd.setDate(newTrialEnd.getDate() + 3);
+      
+      await user.update({ 
+        isActive: true,
+        subscriptionType: 'trial',
+        trialEndsAt: newTrialEnd,
+        subscriptionEndsAt: null,
+        hasUsedTrial: false, // Reset trial usage
+        trialEnabledByAdmin: true // Mark as admin-enabled
+      });
+      
+      console.log(`Admin ${req.admin.username} activated user ${user.email} with fresh 3-day trial`);
     } else {
       // Just update status without changing dates
       await user.update({ isActive });
+      
+      if (!isActive) {
+        console.log(`Admin ${req.admin.username} deactivated user ${user.email}`);
+      }
     }
 
     // Refresh user data
     await user.reload();
 
     res.json({
-      message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
+      message: `User ${isActive ? 'activated with fresh trial' : 'deactivated'} successfully`,
       user: {
         id: user.id,
         name: user.name,
@@ -392,7 +384,9 @@ router.patch('/users/:id/status', adminAuth, async (req, res) => {
         isActive: user.isActive,
         subscriptionType: user.subscriptionType,
         trialEndsAt: user.trialEndsAt,
-        subscriptionEndsAt: user.subscriptionEndsAt
+        subscriptionEndsAt: user.subscriptionEndsAt,
+        hasUsedTrial: user.hasUsedTrial,
+        trialEnabledByAdmin: user.trialEnabledByAdmin
       }
     });
   } catch (error) {
@@ -484,6 +478,149 @@ router.get('/users/:id', adminAuth, async (req, res) => {
     res.json(user);
   } catch (error) {
     console.error('Get user details error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Payment submission endpoint
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+
+// Set up multer for screenshot uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const dir = path.join(__dirname, '../uploads/payments');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+const upload = multer({ storage });
+
+// Payment submission route
+router.post('/users/:id/payment', adminAuth, upload.single('screenshot'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { paymentMethod, transactionId } = req.body;
+    const screenshotPath = req.file ? `/uploads/payments/${req.file.filename}` : null;
+
+    // Save payment info to DB (add Payment model if needed)
+    // For demo, save to User model (add fields if needed)
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    user.paymentMethod = paymentMethod;
+    user.transactionId = transactionId;
+    user.paymentScreenshot = screenshotPath;
+    await user.save();
+
+    res.json({ message: 'Payment info saved', paymentMethod, transactionId, screenshotPath });
+  } catch (error) {
+    console.error('Payment submission error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Approve user payment and activate subscription
+router.post('/users/:id/approve-payment', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (!user.paymentMethod || !user.transactionId) {
+      return res.status(400).json({ message: 'No payment info found for this user' });
+    }
+
+    // Plan configurations
+    const plans = {
+      monthly: { duration: 30, type: 'monthly' },
+      '6month': { duration: 180, type: '6month' },
+      yearly: { duration: 365, type: 'yearly' }
+    };
+
+    const plan = plans[user.paymentPlanId];
+    if (!plan) {
+      return res.status(400).json({ message: 'Invalid plan' });
+    }
+
+    // Calculate subscription end date
+    const subscriptionEndsAt = new Date();
+    subscriptionEndsAt.setDate(subscriptionEndsAt.getDate() + plan.duration);
+
+    // Update user subscription
+    await user.update({
+      subscriptionType: plan.type,
+      subscriptionEndsAt: subscriptionEndsAt,
+      isActive: true,
+      paymentApproved: true,
+      paymentApprovedAt: new Date()
+    });
+
+    res.json({ 
+      success: true,
+      message: 'Payment approved and subscription activated',
+      subscriptionType: plan.type,
+      subscriptionEndsAt: subscriptionEndsAt
+    });
+  } catch (error) {
+    console.error('Approve payment error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Toggle trial for user
+router.put('/users/:id/trial-toggle', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const user = await User.findByPk(id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Toggle trial enabled by admin
+    const newTrialState = !user.trialEnabledByAdmin;
+    
+    // If enabling trial, reset expired trial status
+    const updateData = {
+      trialEnabledByAdmin: newTrialState
+    };
+    
+    if (newTrialState && user.subscriptionType === 'expired_trial') {
+      updateData.subscriptionType = 'trial';
+      updateData.isActive = true;
+      // Extend trial for 3 more days
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + 3);
+      updateData.trialEndsAt = trialEnd;
+    }
+    
+    await user.update(updateData);
+
+    const message = newTrialState 
+      ? (user.subscriptionType === 'expired_trial' 
+          ? 'ট্রায়াল পুনরায় সক্রিয় করা হয়েছে (৩ দিন বাড়ানো হয়েছে)' 
+          : 'ট্রায়াল পুনরায় সক্রিয় করা হয়েছে')
+      : 'ট্রায়াল বন্ধ করা হয়েছে';
+
+    res.json({ 
+      success: true,
+      message,
+      trialEnabledByAdmin: newTrialState
+    });
+  } catch (error) {
+    console.error('Toggle trial error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
