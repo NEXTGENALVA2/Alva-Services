@@ -133,8 +133,45 @@ export default function UsersManagement() {
       alert(response.data.message)
       
     } catch (error: any) {
-      alert('ট্রায়াল ম্যানেজমেন্ট করতে সমস্যা হয়েছে')
+      // Check if this is an email trial restriction error
+      if (error.response?.data?.message?.includes('এই ইমেইল দিয়ে ইতিমধ্যে ট্রায়াল ব্যবহার হয়েছে')) {
+        const confirmForce = confirm(
+          `${error.response.data.message}\n\nআপনি কি জোরপূর্বক ট্রায়াল এক্টিভেট করতে চান? (সতর্কতার সাথে ব্যবহার করুন)`
+        );
+        
+        if (confirmForce) {
+          const reason = prompt('জোরপূর্বক ট্রায়াল এক্টিভেট করার কারণ লিখুন (কমপক্ষে ১০ অক্ষর):');
+          if (reason && reason.trim().length >= 10) {
+            await forceTrialActivation(userId, days, reason);
+          } else {
+            alert('কারণ অবশ্যই কমপক্ষে ১০ অক্ষর হতে হবে');
+          }
+        }
+      } else {
+        alert(error.response?.data?.message || 'ট্রায়াল ম্যানেজমেন্ট করতে সমস্যা হয়েছে')
+      }
       console.error('Trial management error:', error)
+    }
+  }
+
+  const forceTrialActivation = async (userId: string, days: number = 3, reason: string) => {
+    try {
+      const token = localStorage.getItem('adminToken')
+      const response = await axios.post(`http://localhost:5000/api/admin/force-trial/${userId}`, 
+        { days, reason },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      // Update local state
+      setUsers(users.map(user => 
+        user.id === userId ? { ...user, ...response.data.user } : user
+      ))
+      
+      alert(`${response.data.message}\n\nসতর্কতা: ${response.data.warning}`)
+      
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'জোরপূর্বক ট্রায়াল এক্টিভেট করতে সমস্যা হয়েছে')
+      console.error('Force trial activation error:', error)
     }
   }
 

@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Admin, User, Subscription, sequelize } = require('../models');
 const { Op } = require('sequelize');
+const EmailTrialTracker = require('../utils/EmailTrialTracker');
 
 const router = express.Router();
 
@@ -345,26 +346,70 @@ router.patch('/users/:id/status', adminAuth, async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // If activating user, give them a fresh start
+    // If activating user, give them a fresh start ONLY if they don't have paid subscription
     if (isActive && !user.isActive) {
       const now = new Date();
       
-      // Always give a fresh 3-day trial when admin activates
-      const newTrialEnd = new Date();
-      newTrialEnd.setDate(newTrialEnd.getDate() + 3);
+      // Check if user has active paid subscription
+      const hasPaidSubscription = user.paymentApproved && 
+        user.subscriptionType !== 'trial' && 
+        user.subscriptionEndsAt && 
+        new Date(user.subscriptionEndsAt) > now;
       
-      await user.update({ 
-        isActive: true,
-        subscriptionType: 'trial',
-        trialEndsAt: newTrialEnd,
-        subscriptionEndsAt: null,
-        hasUsedTrial: false, // Reset trial usage
-        trialEnabledByAdmin: true // Mark as admin-enabled
-      });
-      
-      console.log(`Admin ${req.admin.username} activated user ${user.email} with fresh 3-day trial`);
+      if (hasPaidSubscription) {
+        // User has paid subscription, just activate without changing subscription
+        await user.update({ 
+          isActive: true
+        });
+        console.log(`Admin ${req.admin.username} activated user ${user.email} (kept existing subscription)`);
+      } else {
+        // Check if this email has already used trial (even if current account is new)
+        const hasEmailUsedTrial = await EmailTrialTracker.hasEmailUsedTrial(user.email);
+        
+        if (hasEmailUsedTrial) {
+          // Email has used trial before - cannot activate trial again via normal activation
+          await user.update({ 
+            isActive: false, // Keep inactive - they need to purchase
+            subscriptionType: 'trial',
+            trialEndsAt: new Date(), // Expired trial
+            hasUsedTrial: true
+          });
+          console.log(`Admin ${req.admin.username} cannot activate ${user.email} - email has already used trial`);
+          
+          // Return error response
+          return res.status(400).json({
+            message: 'এই ইমেইল দিয়ে ইতিমধ্যে ট্রায়াল ব্যবহার হয়েছে। ইউজারকে সাবস্ক্রিপশন কিনতে হবে অথবা Force Trial ব্যবহার করুন।',
+            emailTrialStatus: 'already_used',
+            canForceActivate: true,
+            user: {
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              isActive: user.isActive,
+              hasUsedTrial: user.hasUsedTrial
+            }
+          });
+        } else {
+          // Email hasn't used trial - normal activation
+          const newTrialEnd = new Date();
+          newTrialEnd.setDate(newTrialEnd.getDate() + 3);
+          
+          await user.update({ 
+            isActive: true,
+            subscriptionType: 'trial',
+            trialEndsAt: newTrialEnd,
+            hasUsedTrial: false, // Fresh trial
+            trialEnabledByAdmin: true // Mark as admin-enabled
+          });
+          
+          // Mark email as trial used
+          await EmailTrialTracker.markEmailTrialUsed(user.email, `Admin activation by ${req.admin.username || 'admin'}`);
+          
+          console.log(`Admin ${req.admin.username || 'admin'} activated user ${user.email} with fresh 3-day trial`);
+        }
+      }
     } else {
-      // Just update status without changing dates
+      // Just update status without changing dates or subscription type
       await user.update({ isActive });
       
       if (!isActive) {
@@ -376,7 +421,7 @@ router.patch('/users/:id/status', adminAuth, async (req, res) => {
     await user.reload();
 
     res.json({
-      message: `User ${isActive ? 'activated with fresh trial' : 'deactivated'} successfully`,
+      message: `User ${isActive ? 'activated' : 'deactivated'} successfully`,
       user: {
         id: user.id,
         name: user.name,
@@ -408,15 +453,49 @@ router.put('/users/:id/trial', adminAuth, async (req, res) => {
     }
     
     if (action === 'activate') {
-      // Activate trial for specified days
+      // Activate trial for specified days - only if user doesn't have paid subscription
+      const now = new Date();
+      const hasPaidSubscription = user.paymentApproved && 
+        user.subscriptionType !== 'trial' && 
+        user.subscriptionEndsAt && 
+        new Date(user.subscriptionEndsAt) > now;
+      
+      if (hasPaidSubscription) {
+        return res.status(400).json({ 
+          message: 'Cannot activate trial - user has active paid subscription' 
+        });
+      }
+      
+      // Check if this email has already used trial
+      const hasEmailUsedTrial = await EmailTrialTracker.hasEmailUsedTrial(user.email);
+      
+      if (hasEmailUsedTrial) {
+        return res.status(400).json({
+          message: 'এই ইমেইল দিয়ে ইতিমধ্যে ট্রায়াল ব্যবহার হয়েছে। Force Trial ব্যবহার করুন।',
+          emailTrialStatus: 'already_used',
+          canForceActivate: true,
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            isActive: user.isActive,
+            hasUsedTrial: user.hasUsedTrial
+          }
+        });
+      }
+      
       const trialEnd = new Date();
       trialEnd.setDate(trialEnd.getDate() + parseInt(days));
       
       await user.update({
         subscriptionType: 'trial',
-        isActive: true,
-        trialEndsAt: trialEnd
+        trialEndsAt: trialEnd,
+        trialEnabledByAdmin: true
+        // DON'T change isActive - let admin control that separately
       });
+      
+      // Mark email as trial used
+      await EmailTrialTracker.markEmailTrialUsed(user.email, `Trial management by admin`);
       
       res.json({ 
         message: `${days} days trial activated successfully`,
@@ -431,23 +510,53 @@ router.put('/users/:id/trial', adminAuth, async (req, res) => {
       });
       
     } else if (action === 'deactivate') {
-      // Deactivate trial - user will see renewal interface
-      await user.update({
-        isActive: false,
-        trialEndsAt: new Date() // Set to current time (expired)
-      });
+      // Deactivate ONLY trial, not the entire user
+      // If user has paid subscription, switch to that; otherwise expire trial
+      const now = new Date();
+      const hasPaidSubscription = user.paymentApproved && 
+        user.paymentPlanId && 
+        user.subscriptionEndsAt && 
+        new Date(user.subscriptionEndsAt) > now;
       
-      res.json({ 
-        message: 'Trial deactivated successfully - user will see renewal options',
-        user: {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          subscriptionType: user.subscriptionType,
-          isActive: user.isActive,
-          trialEndsAt: user.trialEndsAt
-        }
-      });
+      if (hasPaidSubscription) {
+        // Switch from trial to paid subscription
+        await user.update({
+          subscriptionType: user.paymentPlanId, // monthly, yearly, etc.
+          trialEndsAt: new Date() // Expire trial
+          // Keep isActive as is, keep subscriptionEndsAt
+        });
+        
+        res.json({ 
+          message: 'Trial deactivated - switched to paid subscription',
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            subscriptionType: user.subscriptionType,
+            isActive: user.isActive,
+            trialEndsAt: user.trialEndsAt,
+            subscriptionEndsAt: user.subscriptionEndsAt
+          }
+        });
+      } else {
+        // No paid subscription, just expire trial but DON'T deactivate user
+        await user.update({
+          trialEndsAt: new Date() // Set to current time (expired)
+          // DON'T change isActive - let admin control that separately
+        });
+        
+        res.json({ 
+          message: 'Trial deactivated - user can purchase subscription',
+          user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            subscriptionType: user.subscriptionType,
+            isActive: user.isActive,
+            trialEndsAt: user.trialEndsAt
+          }
+        });
+      }
       
     } else {
       res.status(400).json({ message: 'Invalid action. Use "activate" or "deactivate"' });
@@ -455,6 +564,62 @@ router.put('/users/:id/trial', adminAuth, async (req, res) => {
     
   } catch (error) {
     console.error('Trial management error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// ADMIN OVERRIDE: Force trial activation even for emails that already used trial
+// WARNING: This bypasses email trial restrictions - use with extreme caution
+router.post('/force-trial/:userId', adminAuth, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { days = 3, reason } = req.body;
+    
+    if (!reason || reason.trim().length < 10) {
+      return res.status(400).json({ 
+        message: 'Reason is required and must be at least 10 characters for force trial activation' 
+      });
+    }
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Log the force activation for audit trail
+    console.log(`ADMIN FORCE TRIAL: Admin forcing trial for email ${user.email} with reason: ${reason}`);
+    
+    // Calculate trial end date
+    const trialEnd = new Date();
+    trialEnd.setDate(trialEnd.getDate() + parseInt(days));
+    
+    // Force activate trial regardless of email history
+    await user.update({
+      subscriptionType: 'trial',
+      trialEndsAt: trialEnd,
+      trialEnabledByAdmin: true,
+      hasUsedTrial: true // Mark as used to maintain consistency
+    });
+    
+    // Mark email as having used trial (even if forced)
+    await EmailTrialTracker.markEmailTrialUsed(user.email, `Admin force activation: ${reason}`);
+    
+    res.json({ 
+      message: `Force trial activated successfully for ${days} days`,
+      warning: 'This was a forced activation that bypassed email trial restrictions',
+      reason: reason,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        subscriptionType: user.subscriptionType,
+        isActive: user.isActive,
+        trialEndsAt: user.trialEndsAt
+      }
+    });
+    
+  } catch (error) {
+    console.error('Force trial activation error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -558,20 +723,28 @@ router.post('/users/:id/approve-payment', adminAuth, async (req, res) => {
     const subscriptionEndsAt = new Date();
     subscriptionEndsAt.setDate(subscriptionEndsAt.getDate() + plan.duration);
 
+    // Check if user was on trial before buying paid plan
+    const wasOnTrial = user.subscriptionType === 'trial';
+
     // Update user subscription
     await user.update({
       subscriptionType: plan.type,
       subscriptionEndsAt: subscriptionEndsAt,
       isActive: true,
       paymentApproved: true,
-      paymentApprovedAt: new Date()
+      paymentApprovedAt: new Date(),
+      // If user was on trial, mark trial as used to prevent future trial access
+      hasUsedTrial: wasOnTrial ? true : user.hasUsedTrial
     });
+
+    console.log(`Payment approved for ${user.email}: ${plan.type} subscription${wasOnTrial ? ' (trial → paid, trial marked as used)' : ''}`);
 
     res.json({ 
       success: true,
       message: 'Payment approved and subscription activated',
       subscriptionType: plan.type,
-      subscriptionEndsAt: subscriptionEndsAt
+      subscriptionEndsAt: subscriptionEndsAt,
+      trialMarkedAsUsed: wasOnTrial
     });
   } catch (error) {
     console.error('Approve payment error:', error);

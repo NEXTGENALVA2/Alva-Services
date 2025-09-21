@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const authMiddleware = require('../middleware/auth');
+const EmailTrialTracker = require('../utils/EmailTrialTracker');
 
 const router = express.Router();
 
@@ -20,23 +21,51 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    // Check if this email has already used trial (even if account was deleted)
+    const hasUsedTrial = await EmailTrialTracker.hasEmailUsedTrial(email);
+    
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Create user with 3-day trial
-    const trialEndsAt = new Date();
-    trialEndsAt.setDate(trialEndsAt.getDate() + 3);
+    let user;
+    
+    if (hasUsedTrial) {
+      console.log('Email has already used trial:', email);
+      
+      // Create user without trial - they must purchase subscription
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        phone,
+        subscriptionType: 'trial',
+        trialEndsAt: new Date(), // Already expired
+        hasUsedTrial: true, // Mark as already used
+        isActive: false // Account inactive until they purchase
+      });
+      
+      console.log('User created without trial (already used):', { id: user.id, email: user.email });
+      
+    } else {
+      // Create user with 3-day trial (first time email)
+      const trialEndsAt = new Date();
+      trialEndsAt.setDate(trialEndsAt.getDate() + 3);
 
-    const user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      phone,
-      trialEndsAt,
-      subscriptionType: 'trial'
-    });
-
-    console.log('User created successfully:', { id: user.id, email: user.email });
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        phone,
+        trialEndsAt,
+        subscriptionType: 'trial',
+        hasUsedTrial: false
+      });
+      
+      // Mark this email as having used trial
+      await EmailTrialTracker.markEmailTrialUsed(email, 'Initial registration trial');
+      
+      console.log('User created with trial:', { id: user.id, email: user.email });
+    }
 
     // Generate JWT
     const token = jwt.sign(
@@ -52,8 +81,11 @@ router.post('/register', async (req, res) => {
         name: user.name,
         email: user.email,
         subscriptionType: user.subscriptionType,
-        trialEndsAt: user.trialEndsAt
-      }
+        trialEndsAt: user.trialEndsAt,
+        hasUsedTrial: user.hasUsedTrial,
+        isActive: user.isActive
+      },
+      trialStatus: hasUsedTrial ? 'already_used' : 'new_trial'
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
